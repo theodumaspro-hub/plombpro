@@ -1,4 +1,3 @@
-import type { VercelRequest, VercelResponse } from "@vercel/node";
 import express from "express";
 import { registerRoutes } from "../server/routes";
 
@@ -26,7 +25,6 @@ function createApp(): Promise<void> {
   app.use(express.urlencoded({ extended: false }));
 
   return registerRoutes(app).then(() => {
-    // Error handler — must be registered AFTER routes
     app!.use((err: any, _req: any, res: any, _next: any) => {
       console.error("API Error:", err);
       if (!res.headersSent) {
@@ -37,7 +35,7 @@ function createApp(): Promise<void> {
   });
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+async function handler(req: any, res: any) {
   try {
     if (!initPromise) {
       initPromise = createApp().catch((err) => {
@@ -64,3 +62,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   }
 }
+
+// Explicit module.exports for CJS compatibility
+module.exports = handler;
+module.exports.default = handler;
+export default handler;

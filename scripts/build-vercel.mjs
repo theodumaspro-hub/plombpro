@@ -42,7 +42,7 @@ for (const fn of functions) {
 
   writeFileSync(join(fnDir, ".vc-config.json"), JSON.stringify({
     runtime: "nodejs18.x",
-    handler: "index.default",
+    handler: "index",
     launcherType: "Nodejs",
     maxDuration: 30,
   }));
