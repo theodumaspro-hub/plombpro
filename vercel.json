@@ -5,14 +5,11 @@
   "outputDirectory": "public",
   "functions": {
     "api/**/*.ts": {
-      "maxDuration": 30,
-      "memory": 1024
+      "maxDuration": 30
     }
   },
   "rewrites": [
     { "source": "/api/health", "destination": "/api/health.ts" },
-    { "source": "/api/test-imports", "destination": "/api/test-imports.ts" },
-    { "source": "/api/test/:path*", "destination": "/api/test.ts" },
     { "source": "/api/:path*", "destination": "/api/index.ts" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
