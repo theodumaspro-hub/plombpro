@@ -75,17 +75,17 @@ export default function ParametresPage() {
   });
   const [companyForm, setCompanyForm] = useState<Partial<CompanySettings>>({});
   const [multiOpen, setMultiOpen] = useState(false);
-  const [newCompany, setNewCompany] = useState({ name: "", siret: "", legalForm: "", address: "", city: "", postalCode: "", color: "#D97706" });
+  const [newCompany, setNewCompany] = useState({ name: "", siret: "", legal_form: "", address: "", city: "", postal_code: "", color: "#D97706" });
 
   const initForm = company && Object.keys(companyForm).length === 0;
   if (initForm && company) {
     setTimeout(() => setCompanyForm({
-      name: company.name, siret: company.siret || "", tvaIntracom: company.tva_intracom || "",
-      address: company.address || "", city: company.city || "", postalCode: company.postal_code || "",
+      name: company.name, siret: company.siret || "", tva_intracom: company.tva_intracom || "",
+      address: company.address || "", city: company.city || "", postal_code: company.postal_code || "",
       phone: company.phone || "", email: company.email || "",
-      rcsNumber: company.rcs_number || "", assuranceDecennale: company.assurance_decennale || "",
-      iban: company.iban || "", bic: company.bic || "", bankName: company.bank_name || "",
-      capital: company.capital || "", legalForm: company.legal_form || "",
+      rcs_number: company.rcs_number || "", assurance_decennale: company.assurance_decennale || "",
+      iban: company.iban || "", bic: company.bic || "", bank_name: company.bank_name || "",
+      capital: company.capital || "", legal_form: company.legal_form || "",
     }), 0);
   }
 
@@ -94,19 +94,19 @@ export default function ParametresPage() {
       const mapped: Record<string, unknown> = {};
       if (data.name !== undefined) mapped.name = data.name;
       if (data.siret !== undefined) mapped.siret = data.siret;
-      if (data.tvaIntracom !== undefined) mapped.tva_intracom = data.tvaIntracom;
+      if (data.tva_intracom !== undefined) mapped.tva_intracom = data.tva_intracom;
       if (data.address !== undefined) mapped.address = data.address;
       if (data.city !== undefined) mapped.city = data.city;
-      if (data.postalCode !== undefined) mapped.postal_code = data.postalCode;
+      if (data.postal_code !== undefined) mapped.postal_code = data.postal_code;
       if (data.phone !== undefined) mapped.phone = data.phone;
       if (data.email !== undefined) mapped.email = data.email;
-      if (data.rcsNumber !== undefined) mapped.rcs_number = data.rcsNumber;
-      if (data.assuranceDecennale !== undefined) mapped.assurance_decennale = data.assuranceDecennale;
+      if (data.rcs_number !== undefined) mapped.rcs_number = data.rcs_number;
+      if (data.assurance_decennale !== undefined) mapped.assurance_decennale = data.assurance_decennale;
       if (data.iban !== undefined) mapped.iban = data.iban;
       if (data.bic !== undefined) mapped.bic = data.bic;
-      if (data.bankName !== undefined) mapped.bank_name = data.bankName;
+      if (data.bank_name !== undefined) mapped.bank_name = data.bank_name;
       if (data.capital !== undefined) mapped.capital = data.capital;
-      if (data.legalForm !== undefined) mapped.legal_form = data.legalForm;
+      if (data.legal_form !== undefined) mapped.legal_form = data.legal_form;
       if (data.plan !== undefined) mapped.plan = data.plan;
       return db.updateCompanySettings(mapped as any);
     },
@@ -123,7 +123,7 @@ export default function ParametresPage() {
       // For multi-company, we just update company settings or create new
       toast({ title: "Fonctionnalité multi-sociétés bientôt disponible" });
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["companies"] }); setMultiOpen(false); toast({ title: "Société ajoutée" }); setNewCompany({ name: "", siret: "", legalForm: "", address: "", city: "", postalCode: "", color: "#D97706" }); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["companies"] }); setMultiOpen(false); toast({ title: "Société ajoutée" }); setNewCompany({ name: "", siret: "", legal_form: "", address: "", city: "", postal_code: "", color: "#D97706" }); },
   });
 
   const deleteCompanyMut = useMutation({
@@ -135,7 +135,7 @@ export default function ParametresPage() {
 
   const switchCompanyMut = useMutation({
     mutationFn: async (comp: Company) => db.updateCompanySettings({
-      name: comp.name, siret: comp.siret, legal_form: comp.legalForm, address: comp.address, city: comp.city, postal_code: comp.postalCode,
+      name: comp.name, siret: comp.siret, legal_form: comp.legal_form, address: comp.address, city: comp.city, postal_code: comp.postal_code,
     } as any),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["company"] }); toast({ title: "Société active changée" }); },
   });
@@ -227,32 +227,32 @@ export default function ParametresPage() {
               <form onSubmit={(e) => { e.preventDefault(); updateMut.mutate(companyForm); }} className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
                   <div><Label>Raison sociale</Label><Input value={companyForm.name || ""} onChange={e => setCompanyForm(f => ({ ...f, name: e.target.value }))} /></div>
-                  <div><Label>Forme juridique</Label><Input value={companyForm.legalForm || ""} onChange={e => setCompanyForm(f => ({ ...f, legalForm: e.target.value }))} placeholder="SARL, SAS..." /></div>
+                  <div><Label>Forme juridique</Label><Input value={companyForm.legal_form || ""} onChange={e => setCompanyForm(f => ({ ...f, legal_form: e.target.value }))} placeholder="SARL, SAS..." /></div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div><Label>SIRET</Label><Input value={companyForm.siret || ""} onChange={e => setCompanyForm(f => ({ ...f, siret: e.target.value }))} /></div>
-                  <div><Label>N° TVA intracommunautaire</Label><Input value={companyForm.tvaIntracom || ""} onChange={e => setCompanyForm(f => ({ ...f, tvaIntracom: e.target.value }))} /></div>
+                  <div><Label>N° TVA intracommunautaire</Label><Input value={companyForm.tva_intracom || ""} onChange={e => setCompanyForm(f => ({ ...f, tva_intracom: e.target.value }))} /></div>
                 </div>
                 <div><Label>Adresse</Label><Input value={companyForm.address || ""} onChange={e => setCompanyForm(f => ({ ...f, address: e.target.value }))} /></div>
                 <div className="grid grid-cols-2 gap-3">
                   <div><Label>Ville</Label><Input value={companyForm.city || ""} onChange={e => setCompanyForm(f => ({ ...f, city: e.target.value }))} /></div>
-                  <div><Label>Code postal</Label><Input value={companyForm.postalCode || ""} onChange={e => setCompanyForm(f => ({ ...f, postalCode: e.target.value }))} /></div>
+                  <div><Label>Code postal</Label><Input value={companyForm.postal_code || ""} onChange={e => setCompanyForm(f => ({ ...f, postal_code: e.target.value }))} /></div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div><Label>Téléphone</Label><Input value={companyForm.phone || ""} onChange={e => setCompanyForm(f => ({ ...f, phone: e.target.value }))} /></div>
                   <div><Label>Email</Label><Input value={companyForm.email || ""} onChange={e => setCompanyForm(f => ({ ...f, email: e.target.value }))} /></div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div><Label>RCS</Label><Input value={companyForm.rcsNumber || ""} onChange={e => setCompanyForm(f => ({ ...f, rcsNumber: e.target.value }))} /></div>
+                  <div><Label>RCS</Label><Input value={companyForm.rcs_number || ""} onChange={e => setCompanyForm(f => ({ ...f, rcs_number: e.target.value }))} /></div>
                   <div><Label>Capital (€)</Label><Input value={companyForm.capital || ""} onChange={e => setCompanyForm(f => ({ ...f, capital: e.target.value }))} /></div>
                 </div>
-                <div><Label>Assurance décennale</Label><Input value={companyForm.assuranceDecennale || ""} onChange={e => setCompanyForm(f => ({ ...f, assuranceDecennale: e.target.value }))} /></div>
+                <div><Label>Assurance décennale</Label><Input value={companyForm.assurance_decennale || ""} onChange={e => setCompanyForm(f => ({ ...f, assurance_decennale: e.target.value }))} /></div>
                 <div className="pt-4 border-t border-border">
                   <h3 className="text-sm font-medium mb-3">Coordonnées bancaires</h3>
                   <div className="grid grid-cols-3 gap-3">
                     <div><Label>IBAN</Label><Input value={companyForm.iban || ""} onChange={e => setCompanyForm(f => ({ ...f, iban: e.target.value }))} /></div>
                     <div><Label>BIC</Label><Input value={companyForm.bic || ""} onChange={e => setCompanyForm(f => ({ ...f, bic: e.target.value }))} /></div>
-                    <div><Label>Banque</Label><Input value={companyForm.bankName || ""} onChange={e => setCompanyForm(f => ({ ...f, bankName: e.target.value }))} /></div>
+                    <div><Label>Banque</Label><Input value={companyForm.bank_name || ""} onChange={e => setCompanyForm(f => ({ ...f, bank_name: e.target.value }))} /></div>
                   </div>
                 </div>
                 <Button type="submit" disabled={updateMut.isPending} data-testid="btn-save-company">
@@ -323,12 +323,12 @@ export default function ParametresPage() {
                 <div><Label>Raison sociale *</Label><Input value={newCompany.name} onChange={e => setNewCompany(f => ({ ...f, name: e.target.value }))} required data-testid="input-company-name" /></div>
                 <div className="grid grid-cols-2 gap-3">
                   <div><Label>SIRET</Label><Input value={newCompany.siret} onChange={e => setNewCompany(f => ({ ...f, siret: e.target.value }))} /></div>
-                  <div><Label>Forme juridique</Label><Input value={newCompany.legalForm} onChange={e => setNewCompany(f => ({ ...f, legalForm: e.target.value }))} placeholder="SARL, SAS..." /></div>
+                  <div><Label>Forme juridique</Label><Input value={newCompany.legal_form} onChange={e => setNewCompany(f => ({ ...f, legal_form: e.target.value }))} placeholder="SARL, SAS..." /></div>
                 </div>
                 <div><Label>Adresse</Label><Input value={newCompany.address} onChange={e => setNewCompany(f => ({ ...f, address: e.target.value }))} /></div>
                 <div className="grid grid-cols-2 gap-3">
                   <div><Label>Ville</Label><Input value={newCompany.city} onChange={e => setNewCompany(f => ({ ...f, city: e.target.value }))} /></div>
-                  <div><Label>Code postal</Label><Input value={newCompany.postalCode} onChange={e => setNewCompany(f => ({ ...f, postalCode: e.target.value }))} /></div>
+                  <div><Label>Code postal</Label><Input value={newCompany.postal_code} onChange={e => setNewCompany(f => ({ ...f, postal_code: e.target.value }))} /></div>
                 </div>
                 <div><Label>Couleur</Label><Input type="color" value={newCompany.color} onChange={e => setNewCompany(f => ({ ...f, color: e.target.value }))} className="h-9 w-20" /></div>
                 <DialogFooter>

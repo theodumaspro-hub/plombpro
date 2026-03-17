@@ -55,9 +55,9 @@ export default function ChantiersPage() {
   }
 
   const [form, setForm] = useState({
-    contactId: "", title: "", type: "rénovation", priority: "normale",
-    address: "", city: "", postalCode: "", estimatedAmountHT: "",
-    startDate: "", endDate: "", description: "",
+    contact_id: "", title: "", type: "rénovation", priority: "normale",
+    address: "", city: "", postal_code: "", estimated_amount_ht: "",
+    start_date: "", end_date: "", description: "",
   });
 
   const createMut = useMutation({
@@ -81,7 +81,7 @@ export default function ChantiersPage() {
     e.preventDefault();
     const ref = `CH-2026-${String(chantiers.length + 1).padStart(3, "0")}`;
     createMut.mutate({
-      contact_id: Number(form.contactId),
+      contact_id: Number(form.contact_id),
       reference: ref,
       title: form.title,
       status: "prospect",
@@ -89,10 +89,10 @@ export default function ChantiersPage() {
       priority: form.priority,
       address: form.address || null,
       city: form.city || null,
-      postal_code: form.postalCode || null,
-      estimated_amount_ht: form.estimatedAmountHT || "0",
-      start_date: form.startDate || null,
-      end_date: form.endDate || null,
+      postal_code: form.postal_code || null,
+      estimated_amount_ht: form.estimated_amount_ht || "0",
+      start_date: form.start_date || null,
+      end_date: form.end_date || null,
       description: form.description || null,
     });
   }
@@ -376,7 +376,7 @@ export default function ChantiersPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <Label>Client *</Label>
-              <Select value={form.contactId} onValueChange={v => setForm(f => ({ ...f, contactId: v }))}>
+              <Select value={form.contact_id} onValueChange={v => setForm(f => ({ ...f, contact_id: v }))}>
                 <SelectTrigger><SelectValue placeholder="Sélectionner un client" /></SelectTrigger>
                 <SelectContent>
                   {clients.map((c: any) => (
@@ -427,21 +427,21 @@ export default function ChantiersPage() {
               </div>
               <div>
                 <Label>Code postal</Label>
-                <Input value={form.postalCode} onChange={e => setForm(f => ({ ...f, postalCode: e.target.value }))} />
+                <Input value={form.postal_code} onChange={e => setForm(f => ({ ...f, postal_code: e.target.value }))} />
               </div>
             </div>
             <div>
               <Label>Budget estimé HT (€)</Label>
-              <Input type="number" step="0.01" value={form.estimatedAmountHT} onChange={e => setForm(f => ({ ...f, estimatedAmountHT: e.target.value }))} />
+              <Input type="number" step="0.01" value={form.estimated_amount_ht} onChange={e => setForm(f => ({ ...f, estimated_amount_ht: e.target.value }))} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Date début</Label>
-                <Input type="date" value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} />
+                <Input type="date" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} />
               </div>
               <div>
                 <Label>Date fin prévue</Label>
-                <Input type="date" value={form.endDate} onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))} />
+                <Input type="date" value={form.end_date} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))} />
               </div>
             </div>
             <div>
@@ -450,7 +450,7 @@ export default function ChantiersPage() {
             </div>
             <DialogFooter>
               <Button type="button" variant="secondary" onClick={() => setOpen(false)}>Annuler</Button>
-              <Button type="submit" disabled={createMut.isPending || !form.contactId || !form.title} data-testid="btn-submit-chantier">
+              <Button type="submit" disabled={createMut.isPending || !form.contact_id || !form.title} data-testid="btn-submit-chantier">
                 {createMut.isPending ? "Création..." : "Créer"}
               </Button>
             </DialogFooter>

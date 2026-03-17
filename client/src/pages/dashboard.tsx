@@ -27,16 +27,16 @@ export default function DashboardPage() {
 
   const stats = useMemo(() => {
     const signedQuotes = quotes.filter(q => q.status === "signé");
-    const caHT = signedQuotes.reduce((s, q) => s + parseFloat(q.amountHT || "0"), 0);
+    const caHT = signedQuotes.reduce((s, q) => s + parseFloat(q.amount_ht || "0"), 0);
 
     const paidInvoices = invoices.filter(i => i.type !== "avoir");
-    const encaissements = paidInvoices.reduce((s, i) => s + parseFloat(i.amountPaid || "0"), 0);
+    const encaissements = paidInvoices.reduce((s, i) => s + parseFloat(i.amount_paid || "0"), 0);
 
-    const totalTTC = paidInvoices.reduce((s, i) => s + parseFloat(i.amountTTC || "0"), 0);
+    const totalTTC = paidInvoices.reduce((s, i) => s + parseFloat(i.amount_ttc || "0"), 0);
     const resteAEncaisser = totalTTC - encaissements;
 
-    const overdueInvoices = invoices.filter(i => i.dueDate && new Date(i.dueDate) < new Date() && i.status === "envoyée");
-    const enRetard = overdueInvoices.reduce((s, i) => s + parseFloat(i.amountTTC || "0"), 0);
+    const overdueInvoices = invoices.filter(i => i.due_date && new Date(i.due_date) < new Date() && i.status === "envoyée");
+    const enRetard = overdueInvoices.reduce((s, i) => s + parseFloat(i.amount_ttc || "0"), 0);
     const enRetardCount = overdueInvoices.length;
 
     const devisEnCours = quotes.filter(q => q.status === "envoyé").length;
@@ -52,27 +52,27 @@ export default function DashboardPage() {
       const year = d.getFullYear();
       const month = d.getMonth();
       const monthInvoices = invoices.filter(inv => {
-        if (!inv.createdAt) return false;
-        const invDate = new Date(inv.createdAt);
+        if (!inv.created_at) return false;
+        const invDate = new Date(inv.created_at);
         return invDate.getFullYear() === year && invDate.getMonth() === month && inv.type !== "avoir";
       });
-      const ca = monthInvoices.reduce((s, i) => s + parseFloat(i.amountHT || "0"), 0);
+      const ca = monthInvoices.reduce((s, i) => s + parseFloat(i.amount_ht || "0"), 0);
       return { month: monthStr, ca, achats: 0 };
     });
 
     // Unpaid breakdown
-    const envoyeeUnpaid = invoices.filter(i => i.status === "envoyée" && i.type !== "avoir").reduce((s, i) => s + parseFloat(i.amountTTC || "0") - parseFloat(i.amountPaid || "0"), 0);
-    const partielleUnpaid = invoices.filter(i => i.status === "partiellement_payée").reduce((s, i) => s + parseFloat(i.amountTTC || "0") - parseFloat(i.amountPaid || "0"), 0);
+    const envoyeeUnpaid = invoices.filter(i => i.status === "envoyée" && i.type !== "avoir").reduce((s, i) => s + parseFloat(i.amount_ttc || "0") - parseFloat(i.amount_paid || "0"), 0);
+    const partielleUnpaid = invoices.filter(i => i.status === "partiellement_payée").reduce((s, i) => s + parseFloat(i.amount_ttc || "0") - parseFloat(i.amount_paid || "0"), 0);
 
     const recentQuotes = [...quotes].sort((a, b) => {
-      const da = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-      const db = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      const da = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const db = b.created_at ? new Date(b.created_at).getTime() : 0;
       return db - da;
     }).slice(0, 5);
 
     const recentInvoices = [...invoices].sort((a, b) => {
-      const da = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-      const dbi = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      const da = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const dbi = b.created_at ? new Date(b.created_at).getTime() : 0;
       return dbi - da;
     }).slice(0, 5);
 
@@ -197,7 +197,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Overdue Invoices Alert */}
-      {(stats.recentInvoices || []).filter((i: any) => i.dueDate && new Date(i.dueDate) < new Date() && i.status === "envoyée").length > 0 && (
+      {(stats.recentInvoices || []).filter((i: any) => i.due_date && new Date(i.due_date) < new Date() && i.status === "envoyée").length > 0 && (
         <Card className="border-red-500/30 bg-red-500/5 mb-6">
           <CardContent className="py-3 px-4">
             <div className="flex items-center gap-2 mb-2">
@@ -206,13 +206,13 @@ export default function DashboardPage() {
             </div>
             <div className="space-y-1">
               {(stats.recentInvoices || [])
-                .filter((i: any) => i.dueDate && new Date(i.dueDate) < new Date() && i.status === "envoyée")
+                .filter((i: any) => i.due_date && new Date(i.due_date) < new Date() && i.status === "envoyée")
                 .map((inv: any) => {
-                  const c = contactMap.get(inv.contactId);
+                  const c = contactMap.get(inv.contact_id);
                   return (
                     <div key={inv.id} className="flex items-center justify-between text-sm">
                       <span>{inv.number} — {c ? contactName(c) : "—"}</span>
-                      <span className="text-red-400 font-medium">{formatCurrency(inv.amountTTC)}</span>
+                      <span className="text-red-400 font-medium">{formatCurrency(inv.amount_ttc)}</span>
                     </div>
                   );
                 })}
@@ -234,7 +234,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="space-y-2">
             {(stats.recentQuotes || []).map((q: any) => {
-              const c = contactMap.get(q.contactId);
+              const c = contactMap.get(q.contact_id);
               return (
                 <div key={q.id} className="flex items-center justify-between py-1.5 border-b border-border/50 last:border-0" data-testid={`quote-row-${q.id}`}>
                   <div className="min-w-0">
@@ -243,7 +243,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <StatusBadge status={q.status} />
-                    <span className="text-sm font-medium w-20 text-right">{formatCurrency(q.amountTTC)}</span>
+                    <span className="text-sm font-medium w-20 text-right">{formatCurrency(q.amount_ttc)}</span>
                   </div>
                 </div>
               );
@@ -264,9 +264,9 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="space-y-2">
             {(stats.recentInvoices || []).map((inv: any) => {
-              const c = contactMap.get(inv.contactId);
-              const ttc = Math.abs(parseFloat(inv.amountTTC || "0"));
-              const paid = parseFloat(inv.amountPaid || "0");
+              const c = contactMap.get(inv.contact_id);
+              const ttc = Math.abs(parseFloat(inv.amount_ttc || "0"));
+              const paid = parseFloat(inv.amount_paid || "0");
               const paidPct = ttc > 0 ? Math.min((paid / ttc) * 100, 100) : 0;
               return (
                 <div key={inv.id} className="py-1.5 border-b border-border/50 last:border-0" data-testid={`invoice-row-${inv.id}`}>
@@ -277,7 +277,7 @@ export default function DashboardPage() {
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <StatusBadge status={inv.status} />
-                      <span className="text-sm font-medium w-20 text-right">{formatCurrency(inv.amountTTC)}</span>
+                      <span className="text-sm font-medium w-20 text-right">{formatCurrency(inv.amount_ttc)}</span>
                     </div>
                   </div>
                   {inv.type !== "avoir" && ttc > 0 && (

@@ -71,7 +71,7 @@ const deleteQuote = (id: number) => deleteOne('quotes', id);
 
 async function duplicateQuote(id: number): Promise<Quote> {
   const original = await getQuote(id);
-  const { id: _id, createdAt: _ca, ...rest } = original as Record<string, unknown>;
+  const { id: _id, created_at: _ca, ...rest } = original as Record<string, unknown>;
   const newQuote = await createQuote({
     ...rest,
     number: `DEV-${Date.now().toString(36).toUpperCase()}`,
@@ -97,16 +97,16 @@ const deleteInvoice = (id: number) => deleteOne('invoices', id);
 async function createInvoiceFromQuote(quoteId: number): Promise<Invoice> {
   const quote = await getQuote(quoteId);
   const invoice = await createInvoice({
-    contact_id: quote.contactId,
-    chantier_id: quote.chantierId,
+    contact_id: quote.contact_id,
+    chantier_id: quote.chantier_id,
     quote_id: quoteId,
     number: `FAC-${Date.now().toString(36).toUpperCase()}`,
     type: 'facture',
     status: 'brouillon',
     title: quote.title,
-    amount_ht: quote.amountHT,
-    amount_tva: quote.amountTVA,
-    amount_ttc: quote.amountTTC,
+    amount_ht: quote.amount_ht,
+    amount_tva: quote.amount_tva,
+    amount_ttc: quote.amount_ttc,
     notes: quote.notes,
     conditions: quote.conditions,
   });
@@ -127,7 +127,7 @@ async function createInvoiceFromQuote(quoteId: number): Promise<Invoice> {
 
 async function duplicateInvoice(id: number): Promise<Invoice> {
   const original = await getInvoice(id);
-  const { id: _id, createdAt: _ca, ...rest } = original as Record<string, unknown>;
+  const { id: _id, created_at: _ca, ...rest } = original as Record<string, unknown>;
   const newInvoice = await createInvoice({
     ...rest,
     number: `FAC-${Date.now().toString(36).toUpperCase()}`,
@@ -342,14 +342,14 @@ async function getFECData(year: string): Promise<string> {
   const lines = [headers.join('\t')];
 
   invoicesList.forEach((inv, idx) => {
-    const date = inv.createdAt ? new Date(inv.createdAt).toISOString().slice(0, 10).replace(/-/g, '') : '';
+    const date = inv.created_at ? new Date(inv.created_at).toISOString().slice(0, 10).replace(/-/g, '') : '';
     const num = String(idx + 1).padStart(6, '0');
     // Revenue line
-    lines.push(['VE', 'Journal des Ventes', num, date, '701000', 'Ventes de services', '', '', inv.number, date, inv.title || 'Facture', '', String(inv.amountHT || '0'), '', '', date, '', 'EUR'].join('\t'));
+    lines.push(['VE', 'Journal des Ventes', num, date, '701000', 'Ventes de services', '', '', inv.number, date, inv.title || 'Facture', '', String(inv.amount_ht || '0'), '', '', date, '', 'EUR'].join('\t'));
     // TVA line
-    lines.push(['VE', 'Journal des Ventes', num, date, '445710', 'TVA collectée', '', '', inv.number, date, 'TVA', '', String(inv.amountTVA || '0'), '', '', date, '', 'EUR'].join('\t'));
+    lines.push(['VE', 'Journal des Ventes', num, date, '445710', 'TVA collectée', '', '', inv.number, date, 'TVA', '', String(inv.amount_tva || '0'), '', '', date, '', 'EUR'].join('\t'));
     // Client line
-    lines.push(['VE', 'Journal des Ventes', num, date, '411000', 'Clients', '', '', inv.number, date, inv.title || 'Facture', String(inv.amountTTC || '0'), '', '', '', date, '', 'EUR'].join('\t'));
+    lines.push(['VE', 'Journal des Ventes', num, date, '411000', 'Clients', '', '', inv.number, date, inv.title || 'Facture', String(inv.amount_ttc || '0'), '', '', '', date, '', 'EUR'].join('\t'));
   });
 
   return lines.join('\n');

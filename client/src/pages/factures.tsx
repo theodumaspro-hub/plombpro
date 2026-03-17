@@ -213,7 +213,7 @@ export default function FacturesPage() {
     setSendForm({
       email: c?.email || "",
       subject: `${docLabel} ${inv.number}${inv.title ? ` — ${inv.title}` : ""}`,
-      message: `Bonjour${c ? ` ${contactName({ firstName: c.first_name, lastName: c.last_name, company: c.company } as any)}` : ""},\n\nVeuillez trouver ci-joint la ${docLabel.toLowerCase()} n° ${inv.number}${inv.title ? ` pour ${inv.title}` : ""}.\n\nN'hésitez pas à nous contacter pour toute question.\n\nCordialement,`,
+      message: `Bonjour${c ? ` ${contactName(c)}` : ""},\n\nVeuillez trouver ci-joint la ${docLabel.toLowerCase()} n° ${inv.number}${inv.title ? ` pour ${inv.title}` : ""}.\n\nN'hésitez pas à nous contacter pour toute question.\n\nCordialement,`,
     });
     setSendOpen(true);
   }
@@ -285,7 +285,7 @@ export default function FacturesPage() {
     if (tab === "factures" && inv.type === "avoir") return false;
     if (search) {
       const c = contactMap.get(inv.contact_id);
-      const cName = c ? contactName({ firstName: c.first_name, lastName: c.last_name, company: c.company } as any).toLowerCase() : "";
+      const cName = c ? contactName(c).toLowerCase() : "";
       const term = search.toLowerCase();
       return inv.number.toLowerCase().includes(term) || (inv.title || "").toLowerCase().includes(term) || cName.includes(term);
     }
@@ -393,7 +393,7 @@ export default function FacturesPage() {
                         </Badge>
                       )}
                     </td>
-                    <td className="py-2.5 px-4 text-muted-foreground">{c ? contactName({ firstName: c.first_name, lastName: c.last_name, company: c.company } as any) : "—"}</td>
+                    <td className="py-2.5 px-4 text-muted-foreground">{c ? contactName(c) : "—"}</td>
                     <td className="py-2.5 px-4 max-w-[180px] truncate">{inv.title || "—"}</td>
                     <td className="py-2.5 px-4">
                       <StatusBadge status={inv.status} />
@@ -497,7 +497,7 @@ export default function FacturesPage() {
                   <SelectTrigger data-testid="select-client-fac"><SelectValue placeholder="Client" /></SelectTrigger>
                   <SelectContent>
                     {clients.map(c => (
-                      <SelectItem key={c.id} value={String(c.id)}>{contactName({ firstName: c.first_name, lastName: c.last_name, company: c.company } as any)}</SelectItem>
+                      <SelectItem key={c.id} value={String(c.id)}>{contactName(c)}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -616,7 +616,7 @@ export default function FacturesPage() {
                       const c = contactMap.get(inv.contact_id);
                       return (
                         <SelectItem key={inv.id} value={String(inv.id)}>
-                          {inv.number} — {c ? contactName({ firstName: c.first_name, lastName: c.last_name, company: c.company } as any) : "—"} — {formatCurrency(inv.amount_ttc)}
+                          {inv.number} — {c ? contactName(c) : "—"} — {formatCurrency(inv.amount_ttc)}
                         </SelectItem>
                       );
                     })}

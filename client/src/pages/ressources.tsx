@@ -46,8 +46,8 @@ export default function RessourcesPage() {
 
   const [form, setForm] = useState({
     type: "employe", name: "", role: "", phone: "", email: "",
-    hourlyRate: "", status: "actif", skills: "", company: "", siret: "",
-    category: "", serialNumber: "",
+    hourly_rate: "", status: "actif", skills: "", company: "", siret: "",
+    category: "", serial_number: "",
   });
 
   const createMut = useMutation({
@@ -64,10 +64,10 @@ export default function RessourcesPage() {
     createMut.mutate({
       type: form.type, name: form.name, role: form.role || null,
       phone: form.phone || null, email: form.email || null,
-      hourly_rate: form.hourlyRate || null, status: form.status,
+      hourly_rate: form.hourly_rate || null, status: form.status,
       skills: form.skills || null, company: form.company || null,
       siret: form.siret || null, category: form.category || null,
-      serial_number: form.serialNumber || null,
+      serial_number: form.serial_number || null,
     });
   }
 
@@ -195,7 +195,7 @@ export default function RessourcesPage() {
                   <div><Label>Téléphone</Label><Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} /></div>
                   <div><Label>Email</Label><Input value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} /></div>
                 </div>
-                <div><Label>Taux horaire (€/h)</Label><Input type="number" value={form.hourlyRate} onChange={e => setForm(f => ({ ...f, hourlyRate: e.target.value }))} /></div>
+                <div><Label>Taux horaire (€/h)</Label><Input type="number" value={form.hourly_rate} onChange={e => setForm(f => ({ ...f, hourly_rate: e.target.value }))} /></div>
                 <div><Label>Compétences</Label><Input value={form.skills} onChange={e => setForm(f => ({ ...f, skills: e.target.value }))} placeholder="Ex: Plomberie, Chauffage, PAC" /></div>
               </>
             )}
@@ -217,7 +217,7 @@ export default function RessourcesPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div><Label>N° série</Label><Input value={form.serialNumber} onChange={e => setForm(f => ({ ...f, serialNumber: e.target.value }))} /></div>
+                <div><Label>N° série</Label><Input value={form.serial_number} onChange={e => setForm(f => ({ ...f, serial_number: e.target.value }))} /></div>
               </>
             )}
             <DialogFooter>

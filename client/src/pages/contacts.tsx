@@ -35,9 +35,9 @@ export default function ContactsPage() {
   const { data: contacts = [] } = useQuery<Contact[]>({ queryKey: ["contacts"], queryFn: () => db.getContacts() });
 
   const [form, setForm] = useState({
-    type: "client", category: "particulier", firstName: "", lastName: "",
+    type: "client", category: "particulier", first_name: "", last_name: "",
     company: "", email: "", phone: "", mobile: "",
-    address: "", city: "", postalCode: "", siret: "", notes: "",
+    address: "", city: "", postal_code: "", siret: "", notes: "",
   });
 
   const createMut = useMutation({
@@ -46,7 +46,7 @@ export default function ContactsPage() {
       queryClient.invalidateQueries({ queryKey: ["contacts"] });
       setOpen(false);
       toast({ title: "Contact créé" });
-      setForm({ type: "client", category: "particulier", firstName: "", lastName: "", company: "", email: "", phone: "", mobile: "", address: "", city: "", postalCode: "", siret: "", notes: "" });
+      setForm({ type: "client", category: "particulier", first_name: "", last_name: "", company: "", email: "", phone: "", mobile: "", address: "", city: "", postal_code: "", siret: "", notes: "" });
     },
   });
 
@@ -54,15 +54,15 @@ export default function ContactsPage() {
     e.preventDefault();
     createMut.mutate({
       ...form,
-      firstName: form.firstName || null,
-      lastName: form.lastName || null,
+      first_name: form.first_name || null,
+      last_name: form.last_name || null,
       company: form.company || null,
       email: form.email || null,
       phone: form.phone || null,
       mobile: form.mobile || null,
       address: form.address || null,
       city: form.city || null,
-      postalCode: form.postalCode || null,
+      postal_code: form.postal_code || null,
       siret: form.siret || null,
       notes: form.notes || null,
     });
@@ -130,13 +130,13 @@ export default function ContactsPage() {
               <div className="mt-3 space-y-1">
                 {c.email && <div className="flex items-center gap-2 text-xs text-muted-foreground"><Mail className="size-3" />{c.email}</div>}
                 {c.phone && <div className="flex items-center gap-2 text-xs text-muted-foreground"><Phone className="size-3" />{c.phone}</div>}
-                {c.city && <div className="flex items-center gap-2 text-xs text-muted-foreground"><MapPin className="size-3" />{c.city} {c.postalCode}</div>}
+                {c.city && <div className="flex items-center gap-2 text-xs text-muted-foreground"><MapPin className="size-3" />{c.city} {c.postal_code}</div>}
               </div>
 
               {c.type === "client" && (
                 <div className="mt-3 pt-3 border-t border-border/50 flex justify-between text-xs">
-                  <span className="text-muted-foreground">Devisé: <span className="text-foreground font-medium">{formatCurrency(c.totalQuoted)}</span></span>
-                  <span className="text-muted-foreground">Facturé: <span className="text-foreground font-medium">{formatCurrency(c.totalBilled)}</span></span>
+                  <span className="text-muted-foreground">Devisé: <span className="text-foreground font-medium">{formatCurrency(c.total_quoted)}</span></span>
+                  <span className="text-muted-foreground">Facturé: <span className="text-foreground font-medium">{formatCurrency(c.total_billed)}</span></span>
                 </div>
               )}
             </CardContent>
@@ -185,11 +185,11 @@ export default function ContactsPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Prénom</Label>
-                <Input value={form.firstName} onChange={e => setForm(f => ({ ...f, firstName: e.target.value }))} />
+                <Input value={form.first_name} onChange={e => setForm(f => ({ ...f, first_name: e.target.value }))} />
               </div>
               <div>
                 <Label>Nom</Label>
-                <Input value={form.lastName} onChange={e => setForm(f => ({ ...f, lastName: e.target.value }))} />
+                <Input value={form.last_name} onChange={e => setForm(f => ({ ...f, last_name: e.target.value }))} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -213,7 +213,7 @@ export default function ContactsPage() {
               </div>
               <div>
                 <Label>Code postal</Label>
-                <Input value={form.postalCode} onChange={e => setForm(f => ({ ...f, postalCode: e.target.value }))} />
+                <Input value={form.postal_code} onChange={e => setForm(f => ({ ...f, postal_code: e.target.value }))} />
               </div>
             </div>
             {(form.category === "professionnel" || form.type === "fournisseur") && (

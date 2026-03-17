@@ -3,7 +3,6 @@ import { Switch, Route, Router } from "wouter";
 import { useHashLocation } from "wouter/use-hash-location";
 import { queryClient } from "./lib/queryClient";
 import { authStore } from "./lib/authStore";
-import { supabase } from "./lib/supabase";
 import { db } from "@/lib/supabaseData";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -41,63 +40,40 @@ function AppRouter() {
   const [view, setView] = useState<AppView>("landing");
   const [isAuthed, setIsAuthed] = useState(false);
 
-  // Check if we have a token
-  const hasToken = authStore.isAuthenticated();
+  // Reactive auth state — subscribe to authStore changes
+  const [hasToken, setHasToken] = useState(() => authStore.isAuthenticated());
+  useEffect(() => {
+    const unsub = authStore.subscribe(() => {
+      setHasToken(authStore.isAuthenticated());
+    });
+    return unsub;
+  }, []);
 
-  // Check auth status via Supabase directly
-  const { data: authData, isLoading: authLoading } = useQuery({
-    queryKey: ["auth"],
-    retry: false,
-    queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      return { authenticated: !!user, user };
-    },
-  });
-
-  // Check company/onboarding state
-  const { data: company, isLoading: companyLoading } = useQuery<CompanySettings>({
+  // Check company/onboarding state (only when authed)
+  const { data: company, isLoading: companyLoading } = useQuery<CompanySettings | null>({
     queryKey: ["company"],
     queryFn: () => db.getCompanySettings(),
     enabled: isAuthed,
   });
 
-  // Determine view based on auth + onboarding state
+  // Determine view based on auth + company state
   useEffect(() => {
-    if (!hasToken) {
-      setIsAuthed(false);
-      if (view !== "login" && view !== "signup") {
-        setView("landing");
-      }
-      return;
-    }
+    if (!isAuthed) return;
+    if (companyLoading) return;
 
-    if (authLoading) return;
-
-    if (authData?.authenticated) {
-      setIsAuthed(true);
-      if (!companyLoading && company) {
-        if (!company.onboardingCompleted) {
-          setView("onboarding");
-        } else if (company.plan === "free" || !company.plan) {
-          setView("subscription");
-        } else {
-          // Ensure hash is valid app route before switching to app view
-          const hash = window.location.hash.replace('#', '') || '/';
-          const appRoutes = ['/', '/devis', '/factures', '/chantiers', '/contacts', '/ressources', '/bibliotheque', '/achats', '/banques', '/pilotage', '/planning', '/suivi-temps', '/documents', '/modeles-devis', '/parametres', '/marketplace', '/integrations', '/import-donnees'];
-          if (!appRoutes.some(r => hash === r || hash.startsWith(r + '/'))) {
-            window.location.hash = '#/';
-          }
-          setView("app");
-        }
+    if (company) {
+      if (!company.onboarding_completed) {
+        setView("onboarding");
+      } else if (company.plan === "free" || !company.plan) {
+        setView("subscription");
+      } else {
+        setView("app");
       }
     } else {
-      setIsAuthed(false);
-      authStore.clear();
-      if (view !== "login" && view !== "signup") {
-        setView("landing");
-      }
+      // No company settings yet → go to onboarding
+      setView("onboarding");
     }
-  }, [authData, authLoading, company, companyLoading, hasToken]);
+  }, [isAuthed, company, companyLoading]);
 
   const navigate = useCallback((path: string) => {
     if (path === "landing") setView("landing");
@@ -110,11 +86,10 @@ function AppRouter() {
 
   const handleAuth = useCallback(() => {
     setIsAuthed(true);
-    queryClient.invalidateQueries({ queryKey: ["auth"] });
     queryClient.invalidateQueries({ queryKey: ["company"] });
-    // Reset hash to root so the app router doesn't 404 on /login or /signup
     window.location.hash = "#/";
-    setView("onboarding");
+    // View will be determined by the useEffect once company data loads
+    setView("onboarding"); // temporary — will be overridden by useEffect
   }, []);
 
   const handleLogout = useCallback(async () => {
@@ -124,8 +99,8 @@ function AppRouter() {
     setView("landing");
   }, []);
 
-  // Loading state (only show when we have a token and are checking)
-  if (hasToken && authLoading) {
+  // Loading state
+  if (isAuthed && companyLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">

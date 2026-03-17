@@ -18,9 +18,9 @@ export function formatPercent(n: number | string | null | undefined): string {
   return `${v.toFixed(0)} %`;
 }
 
-export function contactName(contact: { firstName?: string | null; lastName?: string | null; company?: string | null }): string {
-  if (contact.firstName || contact.lastName) {
-    return [contact.firstName, contact.lastName].filter(Boolean).join(" ");
+export function contactName(contact: { first_name?: string | null; last_name?: string | null; company?: string | null }): string {
+  if (contact.first_name || contact.last_name) {
+    return [contact.first_name, contact.last_name].filter(Boolean).join(" ");
   }
   return contact.company || "—";
 }
