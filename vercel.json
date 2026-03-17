@@ -1,7 +1,7 @@
 {
   "version": 2,
   "installCommand": "npm install --include=dev",
-  "buildCommand": "npx vite build --outDir dist/public && cp -r dist/public/. public/",
+  "buildCommand": "npx vite build --outDir ../public",
   "outputDirectory": "public",
   "functions": {
     "api/**/*.ts": {
