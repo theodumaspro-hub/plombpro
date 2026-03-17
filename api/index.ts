@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import express from "express";
-import { registerRoutes } from "../server/routes.js";
+import { registerRoutes } from "../server/routes";
 
 let app: ReturnType<typeof express> | null = null;
 let initPromise: Promise<void> | null = null;
