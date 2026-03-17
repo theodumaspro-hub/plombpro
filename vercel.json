@@ -11,6 +11,7 @@
   },
   "rewrites": [
     { "source": "/api/health", "destination": "/api/health.ts" },
+    { "source": "/api/test-imports", "destination": "/api/test-imports.ts" },
     { "source": "/api/test/:path*", "destination": "/api/test.ts" },
     { "source": "/api/:path*", "destination": "/api/index.ts" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
