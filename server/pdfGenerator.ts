@@ -1,5 +1,5 @@
 import PDFDocument from "pdfkit";
-import type { Quote, Invoice, Contact, CompanySettings, DocumentLine } from "@shared/schema";
+import type { Quote, Invoice, Contact, CompanySettings, DocumentLine } from "../shared/schema";
 
 // ─── Types ──────────────────────────────────────────────────────
 interface PDFOptions {

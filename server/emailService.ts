@@ -1,4 +1,4 @@
-import type { CompanySettings } from "@shared/schema";
+import type { CompanySettings } from "../shared/schema";
 
 // ─── Types ──────────────────────────────────────────────────────
 interface SendEmailOptions {

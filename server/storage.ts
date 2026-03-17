@@ -20,7 +20,7 @@ import type {
   ApiKey, InsertApiKey,
   Webhook, InsertWebhook,
   IntegrationSettings, InsertIntegrationSettings,
-} from "@shared/schema";
+} from "../shared/schema";
 
 export interface IStorage {
   // Set current user context
