@@ -793,7 +793,7 @@ export function registerWhatsAppApiRoutes(app: Express) {
         const contact = ch.contactId ? contactMap.get(ch.contactId) : undefined;
         const cName = contact ? (contact.company || [contact.firstName, contact.lastName].filter(Boolean).join(" ")) : "";
         const statusEmoji = ch.status === "en_cours" ? "🟢" : ch.status === "terminé" ? "✅" : ch.status === "en_attente" ? "🟡" : "📋";
-        message += `${statusEmoji} ${ch.name || ch.reference || "Chantier"}${cName ? ` — ${cName}` : ""}\n`;
+        message += `${statusEmoji} ${ch.title || ch.reference || "Chantier"}${cName ? ` — ${cName}` : ""}\n`;
         if (ch.address) message += `  📍 ${ch.address}\n`;
         message += "\n";
       }
@@ -802,7 +802,7 @@ export function registerWhatsAppApiRoutes(app: Express) {
         message,
         chantiers: filtered.slice(0, 10).map(ch => ({
           id: ch.id,
-          name: ch.name || ch.reference,
+          name: ch.title || ch.reference,
           status: ch.status,
           address: ch.address,
           client: contactMap.get(ch.contactId || 0)?.company || "",
@@ -835,16 +835,16 @@ export function registerWhatsAppApiRoutes(app: Express) {
 
       if (!date) return res.status(400).json({ error: "Date requise (format YYYY-MM-DD)" });
 
-      const startTime = `${date}T${time || "09:00"}:00`;
+      const startTimeStr = time || "09:00";
       const endHour = time ? String(parseInt(time.split(":")[0]) + (parseInt(duration) || 1)).padStart(2, "0") + ":" + time.split(":")[1] : "10:00";
-      const endTime = `${date}T${endHour}:00`;
 
       const appointment = await storage.createAppointment({
         title: title || "Rendez-vous client",
-        startTime,
-        endTime,
+        date,
+        startTime: startTimeStr,
+        endTime: endHour,
         contactId: resolvedContactId || null,
-        location: address || null,
+        address: address || null,
         notes: (notes || "") + " (Créé via WhatsApp)",
         type: "intervention",
         status: "confirmé",

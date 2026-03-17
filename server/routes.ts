@@ -1290,7 +1290,7 @@ export async function registerRoutes(
       if (dateTo) filtered = filtered.filter(inv => (inv.createdAt || "") <= dateTo);
 
       // Sort by date
-      filtered.sort((a, b) => (a.createdAt || "").localeCompare(b.createdAt || ""));
+      filtered.sort((a, b) => String(a.createdAt || "").localeCompare(String(b.createdAt || "")));
 
       function formatAmount(val: number): string {
         return val.toFixed(2).replace(".", ",");
@@ -1316,7 +1316,7 @@ export async function registerRoutes(
 
       for (const inv of filtered) {
         const invLines = await storage.getDocumentLines("invoice", inv.id);
-        const date = fmtDate(inv.createdAt);
+        const date = fmtDate(inv.createdAt ? String(inv.createdAt) : null);
         const numStr = String(ecritureNum).padStart(6, "0");
 
         // Calculate totals
@@ -1402,7 +1402,7 @@ export async function registerRoutes(
   });
 
   app.get("/api/devis-templates/:id", async (req: Request, res: Response) => {
-    const template = getTemplateById(req.params.id);
+    const template = getTemplateById(req.params.id as string);
     if (!template) return res.status(404).json({ error: "Modèle non trouvé" });
     res.json(template);
   });
