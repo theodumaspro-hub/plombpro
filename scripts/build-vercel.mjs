@@ -46,6 +46,11 @@ for (const fn of functions) {
     launcherType: "Nodejs",
     maxDuration: 30,
   }));
+
+  // Override type:module from root package.json — force CJS
+  writeFileSync(join(fnDir, "package.json"), JSON.stringify({
+    type: "commonjs"
+  }));
   console.log(`  ✓ ${fn.name} bundled`);
 }
 
