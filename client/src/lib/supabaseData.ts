@@ -8,9 +8,25 @@ import type {
   IntegrationSettings, Webhook,
 } from '@shared/schema';
 
+// ── Helper: get current user id ─────────────────────────────────
+async function getCurrentUserId(): Promise<string> {
+  const { data } = await supabase.auth.getSession();
+  const uid = data?.session?.user?.id;
+  if (!uid) throw new Error('Non authentifié');
+  return uid;
+}
+
+// Tables that do NOT have a user_id column (shared / global data)
+const SHARED_TABLES = new Set(['marketplace_items']);
+
 // ── Generic helpers ──────────────────────────────────────────────
 async function getAll<T>(table: string, orderBy = 'id'): Promise<T[]> {
-  const { data, error } = await supabase.from(table).select('*').order(orderBy);
+  let query = supabase.from(table).select('*');
+  if (!SHARED_TABLES.has(table)) {
+    const uid = await getCurrentUserId();
+    query = query.eq('user_id', uid);
+  }
+  const { data, error } = await query.order(orderBy);
   if (error) throw error;
   return (data ?? []) as T[];
 }
@@ -22,7 +38,11 @@ async function getOne<T>(table: string, id: number): Promise<T> {
 }
 
 async function insertOne<T>(table: string, values: Record<string, unknown>): Promise<T> {
-  const { data, error } = await supabase.from(table).insert(values).select().single();
+  const payload = { ...values };
+  if (!SHARED_TABLES.has(table)) {
+    payload.user_id = await getCurrentUserId();
+  }
+  const { data, error } = await supabase.from(table).insert(payload).select().single();
   if (error) throw error;
   return data as T;
 }
@@ -40,7 +60,8 @@ async function deleteOne(table: string, id: number): Promise<void> {
 
 // ── Company Settings ─────────────────────────────────────────────
 async function getCompanySettings(): Promise<CompanySettings | null> {
-  const { data, error } = await supabase.from('company_settings').select('*').limit(1).single();
+  const uid = await getCurrentUserId();
+  const { data, error } = await supabase.from('company_settings').select('*').eq('user_id', uid).limit(1).single();
   if (error && error.code === 'PGRST116') return null; // no rows
   if (error) throw error;
   return data as CompanySettings;
