@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient } from "@/lib/queryClient";
+import { db } from "@/lib/supabaseData";
 import { formatCurrency, contactName } from "@/lib/format";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Search, Phone, Mail, MapPin, Building2, User } from "lucide-react";
@@ -31,7 +32,7 @@ export default function ContactsPage() {
   const [tab, setTab] = useState("all");
   const { toast } = useToast();
 
-  const { data: contacts = [] } = useQuery<Contact[]>({ queryKey: ["/api/contacts"] });
+  const { data: contacts = [] } = useQuery<Contact[]>({ queryKey: ["contacts"], queryFn: () => db.getContacts() });
 
   const [form, setForm] = useState({
     type: "client", category: "particulier", firstName: "", lastName: "",
@@ -40,9 +41,9 @@ export default function ContactsPage() {
   });
 
   const createMut = useMutation({
-    mutationFn: async (data: any) => apiRequest("POST", "/api/contacts", data),
+    mutationFn: async (data: any) => db.createContact(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
+      queryClient.invalidateQueries({ queryKey: ["contacts"] });
       setOpen(false);
       toast({ title: "Contact créé" });
       setForm({ type: "client", category: "particulier", firstName: "", lastName: "", company: "", email: "", phone: "", mobile: "", address: "", city: "", postalCode: "", siret: "", notes: "" });

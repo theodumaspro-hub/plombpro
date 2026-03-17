@@ -3,6 +3,8 @@ import { Switch, Route, Router } from "wouter";
 import { useHashLocation } from "wouter/use-hash-location";
 import { queryClient } from "./lib/queryClient";
 import { authStore } from "./lib/authStore";
+import { supabase } from "./lib/supabase";
+import { db } from "@/lib/supabaseData";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -42,33 +44,20 @@ function AppRouter() {
   // Check if we have a token
   const hasToken = authStore.isAuthenticated();
 
-  // Check auth status from backend (only if we have a token)
-  const { data: authData, isLoading: authLoading } = useQuery<any>({
-    queryKey: ["/api/auth/me"],
+  // Check auth status via Supabase directly
+  const { data: authData, isLoading: authLoading } = useQuery({
+    queryKey: ["auth"],
     retry: false,
-    enabled: hasToken,
     queryFn: async () => {
-      const token = authStore.getToken();
-      if (!token) return { authenticated: false };
-      try {
-        const API_BASE = "__PORT_5000__".startsWith("__") ? "" : "__PORT_5000__";
-        const res = await fetch(`${API_BASE}/api/auth/me`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) {
-          authStore.clear();
-          return { authenticated: false };
-        }
-        return await res.json();
-      } catch {
-        return { authenticated: false };
-      }
+      const { data: { user } } = await supabase.auth.getUser();
+      return { authenticated: !!user, user };
     },
   });
 
   // Check company/onboarding state
   const { data: company, isLoading: companyLoading } = useQuery<CompanySettings>({
-    queryKey: ["/api/company"],
+    queryKey: ["company"],
+    queryFn: () => db.getCompanySettings(),
     enabled: isAuthed,
   });
 
@@ -121,15 +110,15 @@ function AppRouter() {
 
   const handleAuth = useCallback(() => {
     setIsAuthed(true);
-    queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
-    queryClient.invalidateQueries({ queryKey: ["/api/company"] });
+    queryClient.invalidateQueries({ queryKey: ["auth"] });
+    queryClient.invalidateQueries({ queryKey: ["company"] });
     // Reset hash to root so the app router doesn't 404 on /login or /signup
     window.location.hash = "#/";
     setView("onboarding");
   }, []);
 
-  const handleLogout = useCallback(() => {
-    authStore.clear();
+  const handleLogout = useCallback(async () => {
+    await authStore.logout();
     setIsAuthed(false);
     queryClient.clear();
     setView("landing");
@@ -175,7 +164,7 @@ function AppRouter() {
     return (
       <OnboardingWizard
         onComplete={() => {
-          queryClient.invalidateQueries({ queryKey: ["/api/company"] });
+          queryClient.invalidateQueries({ queryKey: ["company"] });
           setView("subscription");
         }}
       />
@@ -187,7 +176,7 @@ function AppRouter() {
     return (
       <SubscriptionPage
         onComplete={() => {
-          queryClient.invalidateQueries({ queryKey: ["/api/company"] });
+          queryClient.invalidateQueries({ queryKey: ["company"] });
           setView("app");
         }}
         onBack={() => setView("onboarding")}
@@ -230,45 +219,11 @@ function AppRouter() {
   );
 }
 
-// Handle OAuth callback from Google redirect (?code= in URL)
-function OAuthCallbackHandler() {
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get("code");
-    const state = params.get("state");
-    if (code && state === "gmail_connect") {
-      // We're in the OAuth popup — send code to the opener and close
-      if (window.opener) {
-        // Post message to parent window
-        window.opener.postMessage({ type: "gmail_oauth_code", code }, "*");
-        window.close();
-      } else {
-        // Not in a popup — exchange code directly then redirect
-        fetch("/api/integrations/gmail/callback", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ code }),
-        })
-          .then(r => r.json())
-          .then(() => {
-            // Clean URL and redirect to integrations page
-            window.location.href = window.location.pathname + "#/parametres";
-          })
-          .catch(() => {
-            window.location.href = window.location.pathname + "#/parametres";
-          });
-      }
-    }
-  }, []);
-  return null;
-}
-
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
-        <OAuthCallbackHandler />
         <Router hook={useHashLocation}>
           <AppRouter />
         </Router>

@@ -9,7 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient } from "@/lib/queryClient";
+import { db } from "@/lib/supabaseData";
 import { formatDate } from "@/lib/format";
 import { useToast } from "@/hooks/use-toast";
 import { Key, Webhook, Plus, Trash2, Ban, Play, Pause, Copy, Code2, ExternalLink, AlertTriangle } from "lucide-react";
@@ -71,12 +72,21 @@ export default function IntegrationsPage() {
   const [keyDialogOpen, setKeyDialogOpen] = useState(false);
   const [keyForm, setKeyForm] = useState({ name: "", expiresAt: "", permissions: [] as string[] });
 
-  const { data: apiKeys = [] } = useQuery<ApiKey[]>({ queryKey: ["/api/api-keys"] });
+  const { data: apiKeys = [] } = useQuery<any[]>({
+    queryKey: ["api-keys"],
+    queryFn: () => db.getApiKeys(),
+  });
 
   const createKeyMut = useMutation({
-    mutationFn: async (data: any) => apiRequest("POST", "/api/api-keys", data),
+    mutationFn: async (data: any) => db.createApiKey({
+      name: data.name,
+      key: data.key,
+      permissions: data.permissions,
+      expires_at: data.expiresAt || null,
+      status: data.status,
+    }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/api-keys"] });
+      queryClient.invalidateQueries({ queryKey: ["api-keys"] });
       setKeyDialogOpen(false);
       setKeyForm({ name: "", expiresAt: "", permissions: [] });
       toast({ title: "Clé API créée" });
@@ -84,17 +94,17 @@ export default function IntegrationsPage() {
   });
 
   const revokeKeyMut = useMutation({
-    mutationFn: async (id: number) => apiRequest("PATCH", `/api/api-keys/${id}`, { status: "revoked" }),
+    mutationFn: async (id: number) => db.updateApiKey(id, { status: "revoked" }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/api-keys"] });
+      queryClient.invalidateQueries({ queryKey: ["api-keys"] });
       toast({ title: "Clé révoquée" });
     },
   });
 
   const deleteKeyMut = useMutation({
-    mutationFn: async (id: number) => apiRequest("DELETE", `/api/api-keys/${id}`),
+    mutationFn: async (id: number) => db.deleteApiKey(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/api-keys"] });
+      queryClient.invalidateQueries({ queryKey: ["api-keys"] });
       toast({ title: "Clé supprimée" });
     },
   });
@@ -123,12 +133,22 @@ export default function IntegrationsPage() {
   const [webhookDialogOpen, setWebhookDialogOpen] = useState(false);
   const [webhookForm, setWebhookForm] = useState({ name: "", url: "", events: [] as string[] });
 
-  const { data: webhooks = [] } = useQuery<WebhookType[]>({ queryKey: ["/api/webhooks"] });
+  const { data: webhooks = [] } = useQuery<any[]>({
+    queryKey: ["webhooks"],
+    queryFn: () => db.getWebhooks(),
+  });
 
   const createWebhookMut = useMutation({
-    mutationFn: async (data: any) => apiRequest("POST", "/api/webhooks", data),
+    mutationFn: async (data: any) => db.createWebhook({
+      name: data.name,
+      url: data.url,
+      events: data.events,
+      secret: data.secret,
+      status: data.status,
+      failure_count: data.failureCount,
+    }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/webhooks"] });
+      queryClient.invalidateQueries({ queryKey: ["webhooks"] });
       setWebhookDialogOpen(false);
       setWebhookForm({ name: "", url: "", events: [] });
       toast({ title: "Webhook créé" });
@@ -136,17 +156,17 @@ export default function IntegrationsPage() {
   });
 
   const toggleWebhookMut = useMutation({
-    mutationFn: async ({ id, status }: { id: number; status: string }) => apiRequest("PATCH", `/api/webhooks/${id}`, { status }),
+    mutationFn: async ({ id, status }: { id: number; status: string }) => db.updateWebhook(id, { status }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/webhooks"] });
+      queryClient.invalidateQueries({ queryKey: ["webhooks"] });
       toast({ title: "Webhook mis à jour" });
     },
   });
 
   const deleteWebhookMut = useMutation({
-    mutationFn: async (id: number) => apiRequest("DELETE", `/api/webhooks/${id}`),
+    mutationFn: async (id: number) => db.deleteWebhook(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/webhooks"] });
+      queryClient.invalidateQueries({ queryKey: ["webhooks"] });
       toast({ title: "Webhook supprimé" });
     },
   });
@@ -206,7 +226,7 @@ export default function IntegrationsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {apiKeys.map(k => {
+                  {apiKeys.map((k: any) => {
                     const perms = parseJsonArray(k.permissions);
                     return (
                       <tr key={k.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors" data-testid={`api-key-row-${k.id}`}>
@@ -233,7 +253,7 @@ export default function IntegrationsPage() {
                             )}
                           </div>
                         </td>
-                        <td className="py-2.5 px-4 text-xs text-muted-foreground">{formatDate(k.lastUsedAt)}</td>
+                        <td className="py-2.5 px-4 text-xs text-muted-foreground">{formatDate(k.last_used_at)}</td>
                         <td className="py-2.5 px-4">
                           {k.status === "active" ? (
                             <Badge variant="outline" className="text-[10px] border-0 bg-emerald-500/15 text-emerald-400">Active</Badge>
@@ -304,7 +324,7 @@ export default function IntegrationsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {webhooks.map(w => {
+                  {webhooks.map((w: any) => {
                     const events = parseJsonArray(w.events);
                     return (
                       <tr key={w.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors" data-testid={`webhook-row-${w.id}`}>
@@ -333,11 +353,11 @@ export default function IntegrationsPage() {
                             <Badge variant="outline" className="text-[10px] border-0 bg-red-500/15 text-red-400">Erreur</Badge>
                           )}
                         </td>
-                        <td className="py-2.5 px-4 text-xs text-muted-foreground">{formatDate(w.lastTriggeredAt)}</td>
+                        <td className="py-2.5 px-4 text-xs text-muted-foreground">{formatDate(w.last_triggered_at)}</td>
                         <td className="py-2.5 px-4">
-                          {(w.failureCount || 0) > 0 ? (
+                          {(w.failure_count || 0) > 0 ? (
                             <span className="text-xs text-red-400 flex items-center gap-1">
-                              <AlertTriangle className="size-3" /> {w.failureCount}
+                              <AlertTriangle className="size-3" /> {w.failure_count}
                             </span>
                           ) : (
                             <span className="text-xs text-muted-foreground">0</span>

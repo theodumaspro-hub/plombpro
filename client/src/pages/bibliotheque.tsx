@@ -10,12 +10,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient } from "@/lib/queryClient";
+import { db } from "@/lib/supabaseData";
 import { formatCurrency } from "@/lib/format";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Search, Package, Wrench, User, Layers, Users, Truck, MoreHorizontal, FolderTree, Trash2, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import type { LibraryItem } from "@shared/schema";
 
 const TYPE_CONFIG: Record<string, { label: string; icon: any; color: string }> = {
   fourniture: { label: "Fourniture", icon: Package, color: "#3B82F6" },
@@ -49,7 +49,7 @@ export default function BibliothequePage() {
   const [newFamilyName, setNewFamilyName] = useState("");
   const { toast } = useToast();
 
-  const { data: items = [] } = useQuery<LibraryItem[]>({ queryKey: ["/api/library"] });
+  const { data: items = [] } = useQuery<any[]>({ queryKey: ["library"], queryFn: () => db.getLibraryItems() });
 
   // Inline creation form
   const [form, setForm] = useState({
@@ -65,9 +65,9 @@ export default function BibliothequePage() {
   const formMargin = formPurchase > 0 ? (((formSelling - formPurchase) / formPurchase) * 100).toFixed(1) : "—";
 
   const createMut = useMutation({
-    mutationFn: async (data: any) => apiRequest("POST", "/api/library", data),
+    mutationFn: async (data: any) => db.createLibraryItem(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/library"] });
+      queryClient.invalidateQueries({ queryKey: ["library"] });
       setOpen(false);
       toast({ title: "Article ajouté" });
       setForm({ type: "fourniture", family: "", subFamily: "", reference: "", designation: "", description: "", unit: "u", purchasePriceHT: "", sellingPriceHT: "", tvaRate: "20" });
@@ -75,9 +75,9 @@ export default function BibliothequePage() {
   });
 
   const deleteMut = useMutation({
-    mutationFn: async (id: number) => apiRequest("DELETE", `/api/library/${id}`),
+    mutationFn: async (id: number) => db.deleteLibraryItem(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/library"] });
+      queryClient.invalidateQueries({ queryKey: ["library"] });
       toast({ title: "Article supprimé" });
     },
   });
@@ -88,13 +88,17 @@ export default function BibliothequePage() {
     const selling = parseFloat(form.sellingPriceHT) || 0;
     const marginPct = purchase > 0 ? ((selling - purchase) / purchase * 100).toFixed(1) : null;
     createMut.mutate({
-      ...form,
-      purchasePriceHT: form.purchasePriceHT || null,
-      sellingPriceHT: form.sellingPriceHT || "0",
-      marginPercent: marginPct,
-      subFamily: form.subFamily || null,
+      type: form.type,
+      family: form.family,
+      sub_family: form.subFamily || null,
       reference: form.reference || null,
+      designation: form.designation,
       description: form.description || null,
+      unit: form.unit,
+      purchase_price_ht: form.purchasePriceHT || null,
+      selling_price_ht: form.sellingPriceHT || "0",
+      margin_percent: marginPct,
+      tva_rate: form.tvaRate,
     });
   }
 
@@ -201,8 +205,8 @@ export default function BibliothequePage() {
               {filtered.map(item => {
                 const cfg = TYPE_CONFIG[item.type] || TYPE_CONFIG.divers;
                 const Icon = cfg.icon;
-                const purchase = parseFloat(item.purchasePriceHT || "0");
-                const selling = parseFloat(item.sellingPriceHT || "0");
+                const purchase = parseFloat(item.purchase_price_ht || "0");
+                const selling = parseFloat(item.selling_price_ht || "0");
                 const coeff = purchase > 0 ? (selling / purchase).toFixed(2) : "—";
                 return (
                   <tr key={item.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors" data-testid={`library-row-${item.id}`}>
@@ -216,19 +220,19 @@ export default function BibliothequePage() {
                       <div className="font-medium">{item.designation}</div>
                       {item.description && <div className="text-xs text-muted-foreground truncate max-w-[250px]">{item.description}</div>}
                     </td>
-                    <td className="py-2.5 px-4 text-muted-foreground text-xs">{item.family}{item.subFamily ? ` / ${item.subFamily}` : ""}</td>
+                    <td className="py-2.5 px-4 text-muted-foreground text-xs">{item.family}{item.sub_family ? ` / ${item.sub_family}` : ""}</td>
                     <td className="py-2.5 px-4 text-muted-foreground">{item.unit}</td>
-                    <td className="py-2.5 px-4 text-right text-muted-foreground">{item.purchasePriceHT ? formatCurrency(item.purchasePriceHT) : "—"}</td>
-                    <td className="py-2.5 px-4 text-right font-medium">{formatCurrency(item.sellingPriceHT)}</td>
+                    <td className="py-2.5 px-4 text-right text-muted-foreground">{item.purchase_price_ht ? formatCurrency(item.purchase_price_ht) : "—"}</td>
+                    <td className="py-2.5 px-4 text-right font-medium">{formatCurrency(item.selling_price_ht)}</td>
                     <td className="py-2.5 px-4 text-right text-muted-foreground text-xs">{coeff}</td>
                     <td className="py-2.5 px-4 text-right">
-                      {item.marginPercent ? (
-                        <span className={parseFloat(item.marginPercent) >= 40 ? "text-emerald-400" : parseFloat(item.marginPercent) >= 20 ? "text-amber-400" : "text-red-400"}>
-                          {parseFloat(item.marginPercent).toFixed(0)}%
+                      {item.margin_percent ? (
+                        <span className={parseFloat(item.margin_percent) >= 40 ? "text-emerald-400" : parseFloat(item.margin_percent) >= 20 ? "text-amber-400" : "text-red-400"}>
+                          {parseFloat(item.margin_percent).toFixed(0)}%
                         </span>
                       ) : "—"}
                     </td>
-                    <td className="py-2.5 px-4 text-muted-foreground">{item.tvaRate}%</td>
+                    <td className="py-2.5 px-4 text-muted-foreground">{item.tva_rate}%</td>
                     <td className="py-2.5 px-4">
                       <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground hover:text-red-400"
                         onClick={() => deleteMut.mutate(item.id)}>

@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient } from "@/lib/queryClient";
+import { db } from "@/lib/supabaseData";
 import { formatDate } from "@/lib/format";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -57,16 +58,16 @@ export default function DocumentsPage() {
   const [search, setSearch] = useState("");
   const { toast } = useToast();
 
-  const { data: documents = [] } = useQuery<DocType[]>({ queryKey: ["/api/documents"] });
+  const { data: documents = [] } = useQuery<any[]>({ queryKey: ["documents"], queryFn: () => db.getDocuments() });
 
   const [form, setForm] = useState({
     name: "", type: "autre", category: "technique", relatedType: "", relatedId: "", notes: "",
   });
 
   const createMut = useMutation({
-    mutationFn: async (data: any) => apiRequest("POST", "/api/documents", data),
+    mutationFn: async (data: any) => db.createDocument(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
       setOpen(false);
       toast({ title: "Document ajouté" });
       setForm({ name: "", type: "autre", category: "technique", relatedType: "", relatedId: "", notes: "" });
@@ -74,9 +75,9 @@ export default function DocumentsPage() {
   });
 
   const deleteMut = useMutation({
-    mutationFn: async (id: number) => apiRequest("DELETE", `/api/documents/${id}`),
+    mutationFn: async (id: number) => db.deleteDocument(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
       toast({ title: "Document supprimé" });
     },
   });
@@ -92,13 +93,13 @@ export default function DocumentsPage() {
       name: form.name,
       type: form.type,
       category: form.category || null,
-      relatedType: form.relatedType || null,
-      relatedId: form.relatedId ? Number(form.relatedId) : null,
+      related_type: form.relatedType || null,
+      related_id: form.relatedId ? Number(form.relatedId) : null,
       size: Math.floor(Math.random() * 3000000) + 50000,
-      mimeType: mimeTypes[form.type] || "application/octet-stream",
+      mime_type: mimeTypes[form.type] || "application/octet-stream",
       url: `/docs/${form.name.toLowerCase().replace(/\s/g, "-")}`,
       notes: form.notes || null,
-      uploadedBy: "Lucas Martin",
+      uploaded_by: "Lucas Martin",
     });
   }
 
@@ -222,7 +223,7 @@ export default function DocumentsPage() {
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
                     <div className="size-10 rounded-lg bg-muted/50 flex items-center justify-center">
-                      {fileIcon(doc.mimeType)}
+                      {fileIcon(doc.mime_type)}
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="text-sm font-medium truncate">{doc.name}</div>
@@ -250,8 +251,8 @@ export default function DocumentsPage() {
                   )}
                 </div>
                 <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
-                  <span>{doc.uploadedBy}</span>
-                  <span>{formatDate(doc.createdAt ? new Date(doc.createdAt).toISOString() : null)}</span>
+                  <span>{doc.uploaded_by}</span>
+                  <span>{formatDate(doc.created_at ? new Date(doc.created_at).toISOString() : null)}</span>
                 </div>
               </CardContent>
             </Card>
@@ -283,7 +284,7 @@ export default function DocumentsPage() {
                   <tr key={doc.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors" data-testid={`document-row-${doc.id}`}>
                     <td className="py-2.5 px-4">
                       <div className="flex items-center gap-2">
-                        {fileIcon(doc.mimeType)}
+                        {fileIcon(doc.mime_type)}
                         <span className="text-sm font-medium">{doc.name}</span>
                       </div>
                     </td>
@@ -294,8 +295,8 @@ export default function DocumentsPage() {
                     </td>
                     <td className="py-2.5 px-4 text-xs text-muted-foreground">{doc.category ? (CATEGORY_LABELS[doc.category] || doc.category) : "—"}</td>
                     <td className="py-2.5 px-4 text-right text-xs tabular-nums lining-nums">{formatFileSize(doc.size)}</td>
-                    <td className="py-2.5 px-4 text-xs text-muted-foreground">{doc.uploadedBy || "—"}</td>
-                    <td className="py-2.5 px-4 text-xs text-muted-foreground">{formatDate(doc.createdAt ? new Date(doc.createdAt).toISOString() : null)}</td>
+                    <td className="py-2.5 px-4 text-xs text-muted-foreground">{doc.uploaded_by || "—"}</td>
+                    <td className="py-2.5 px-4 text-xs text-muted-foreground">{formatDate(doc.created_at ? new Date(doc.created_at).toISOString() : null)}</td>
                     <td className="py-2.5 px-4">
                       <Button
                         variant="ghost"

@@ -6,10 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuery } from "@tanstack/react-query";
+import { db } from "@/lib/supabaseData";
 import { formatCurrency } from "@/lib/format";
 import { useToast } from "@/hooks/use-toast";
 import { Search, Star, Truck, ShoppingCart, BookOpen, Tag, Package } from "lucide-react";
-import type { MarketplaceItem } from "@shared/schema";
 
 const CATEGORIES = [
   { value: "tous", label: "Tous" },
@@ -47,7 +47,10 @@ export default function MarketplacePage() {
   const [sort, setSort] = useState("rating");
   const { toast } = useToast();
 
-  const { data: items = [] } = useQuery<MarketplaceItem[]>({ queryKey: ["/api/marketplace"] });
+  const { data: items = [] } = useQuery<any[]>({
+    queryKey: ["marketplace"],
+    queryFn: () => db.getMarketplaceItems(),
+  });
 
   const filtered = useMemo(() => {
     let list = [...items];
@@ -59,30 +62,30 @@ export default function MarketplacePage() {
       const term = search.toLowerCase();
       list = list.filter(i =>
         i.name.toLowerCase().includes(term) ||
-        i.supplierName.toLowerCase().includes(term) ||
+        (i.supplier_name || "").toLowerCase().includes(term) ||
         (i.description || "").toLowerCase().includes(term)
       );
     }
 
     switch (sort) {
       case "price_asc":
-        list.sort((a, b) => parseFloat(a.priceHT || "0") - parseFloat(b.priceHT || "0"));
+        list.sort((a, b) => parseFloat(a.price_ht || "0") - parseFloat(b.price_ht || "0"));
         break;
       case "price_desc":
-        list.sort((a, b) => parseFloat(b.priceHT || "0") - parseFloat(a.priceHT || "0"));
+        list.sort((a, b) => parseFloat(b.price_ht || "0") - parseFloat(a.price_ht || "0"));
         break;
       case "rating":
         list.sort((a, b) => parseFloat(b.rating || "0") - parseFloat(a.rating || "0"));
         break;
       case "delivery":
-        list.sort((a, b) => (a.deliveryDays || 99) - (b.deliveryDays || 99));
+        list.sort((a, b) => (a.delivery_days || 99) - (b.delivery_days || 99));
         break;
     }
 
     return list;
   }, [items, category, search, sort]);
 
-  const promoCount = items.filter(i => i.promoPercent && parseFloat(String(i.promoPercent)) > 0).length;
+  const promoCount = items.filter(i => i.promo_percent && parseFloat(String(i.promo_percent)) > 0).length;
 
   return (
     <AppLayout title="Marketplace fournisseurs">
@@ -148,8 +151,8 @@ export default function MarketplacePage() {
       {/* Product grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filtered.map(item => {
-          const promo = item.promoPercent ? parseFloat(String(item.promoPercent)) : 0;
-          const price = parseFloat(item.priceHT || "0");
+          const promo = item.promo_percent ? parseFloat(String(item.promo_percent)) : 0;
+          const price = parseFloat(item.price_ht || "0");
           const discountedPrice = promo > 0 ? price * (1 - promo / 100) : price;
           const rating = parseFloat(item.rating || "0");
 
@@ -166,7 +169,7 @@ export default function MarketplacePage() {
               <CardContent className="py-4 px-4 space-y-3">
                 {/* Supplier badge */}
                 <Badge variant="outline" className="text-[10px] font-medium">
-                  {item.supplierName}
+                  {item.supplier_name}
                 </Badge>
 
                 {/* Product name */}
@@ -197,9 +200,9 @@ export default function MarketplacePage() {
                 <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
                   <span className="flex items-center gap-1">
                     <Truck className="size-3" />
-                    {item.deliveryDays} jour{(item.deliveryDays || 0) > 1 ? "s" : ""}
+                    {item.delivery_days} jour{(item.delivery_days || 0) > 1 ? "s" : ""}
                   </span>
-                  {item.inStock ? (
+                  {item.in_stock ? (
                     <Badge variant="outline" className="text-[10px] border-0 bg-emerald-500/15 text-emerald-400">
                       En stock
                     </Badge>
@@ -208,8 +211,8 @@ export default function MarketplacePage() {
                       Rupture
                     </Badge>
                   )}
-                  {item.minQuantity && item.minQuantity > 1 && (
-                    <span>Min. {item.minQuantity}</span>
+                  {item.min_quantity && item.min_quantity > 1 && (
+                    <span>Min. {item.min_quantity}</span>
                   )}
                 </div>
 
@@ -218,7 +221,7 @@ export default function MarketplacePage() {
                   <Button
                     size="sm"
                     className="gap-2 h-8 text-xs flex-1"
-                    disabled={!item.inStock}
+                    disabled={!item.in_stock}
                     onClick={() => toast({ title: "Commande simulée", description: `${item.name} ajouté au panier` })}
                     data-testid={`order-btn-${item.id}`}
                   >

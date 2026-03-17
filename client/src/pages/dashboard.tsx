@@ -1,6 +1,8 @@
+import { useMemo } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
+import { db } from "@/lib/supabaseData";
 import { formatCurrency, formatDate, contactName, statusLabel } from "@/lib/format";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Link } from "wouter";
@@ -14,9 +16,74 @@ import type { Quote, Invoice, Chantier, Contact } from "@shared/schema";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function DashboardPage() {
-  const { data: stats, isLoading: statsLoading } = useQuery<any>({ queryKey: ["/api/dashboard/stats"] });
-  const { data: contacts } = useQuery<Contact[]>({ queryKey: ["/api/contacts"] });
+  const { data: quotes = [] } = useQuery<Quote[]>({ queryKey: ["quotes"], queryFn: () => db.getQuotes() });
+  const { data: invoices = [] } = useQuery<Invoice[]>({ queryKey: ["invoices"], queryFn: () => db.getInvoices() });
+  const { data: contacts = [] } = useQuery<Contact[]>({ queryKey: ["contacts"], queryFn: () => db.getContacts() });
+  const { data: chantiers = [] } = useQuery<Chantier[]>({ queryKey: ["chantiers"], queryFn: () => db.getChantiers() });
+
   const contactMap = new Map((contacts || []).map(c => [c.id, c]));
+
+  const statsLoading = !quotes.length && !invoices.length;
+
+  const stats = useMemo(() => {
+    const signedQuotes = quotes.filter(q => q.status === "signé");
+    const caHT = signedQuotes.reduce((s, q) => s + parseFloat(q.amountHT || "0"), 0);
+
+    const paidInvoices = invoices.filter(i => i.type !== "avoir");
+    const encaissements = paidInvoices.reduce((s, i) => s + parseFloat(i.amountPaid || "0"), 0);
+
+    const totalTTC = paidInvoices.reduce((s, i) => s + parseFloat(i.amountTTC || "0"), 0);
+    const resteAEncaisser = totalTTC - encaissements;
+
+    const overdueInvoices = invoices.filter(i => i.dueDate && new Date(i.dueDate) < new Date() && i.status === "envoyée");
+    const enRetard = overdueInvoices.reduce((s, i) => s + parseFloat(i.amountTTC || "0"), 0);
+    const enRetardCount = overdueInvoices.length;
+
+    const devisEnCours = quotes.filter(q => q.status === "envoyé").length;
+    const devisSignes = signedQuotes.length;
+    const chantiersActifs = chantiers.filter(c => c.status === "en_cours").length;
+    const clientsCount = contacts.filter(c => c.type === "client").length;
+
+    // Monthly data (last 6 months) - simplified
+    const now = new Date();
+    const monthlyData = Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
+      const monthStr = d.toLocaleDateString("fr-FR", { month: "short" });
+      const year = d.getFullYear();
+      const month = d.getMonth();
+      const monthInvoices = invoices.filter(inv => {
+        if (!inv.createdAt) return false;
+        const invDate = new Date(inv.createdAt);
+        return invDate.getFullYear() === year && invDate.getMonth() === month && inv.type !== "avoir";
+      });
+      const ca = monthInvoices.reduce((s, i) => s + parseFloat(i.amountHT || "0"), 0);
+      return { month: monthStr, ca, achats: 0 };
+    });
+
+    // Unpaid breakdown
+    const envoyeeUnpaid = invoices.filter(i => i.status === "envoyée" && i.type !== "avoir").reduce((s, i) => s + parseFloat(i.amountTTC || "0") - parseFloat(i.amountPaid || "0"), 0);
+    const partielleUnpaid = invoices.filter(i => i.status === "partiellement_payée").reduce((s, i) => s + parseFloat(i.amountTTC || "0") - parseFloat(i.amountPaid || "0"), 0);
+
+    const recentQuotes = [...quotes].sort((a, b) => {
+      const da = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const db = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return db - da;
+    }).slice(0, 5);
+
+    const recentInvoices = [...invoices].sort((a, b) => {
+      const da = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const dbi = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return dbi - da;
+    }).slice(0, 5);
+
+    return {
+      caHT, encaissements, resteAEncaisser, enRetard, enRetardCount,
+      devisEnCours, devisSignes, chantiersActifs, clientsCount,
+      monthlyData,
+      unpaidByStatus: { envoyee: envoyeeUnpaid, partielle: partielleUnpaid, enRetard },
+      recentQuotes, recentInvoices,
+    };
+  }, [quotes, invoices, contacts, chantiers]);
 
   return (
     <AppLayout title="Tableau de bord">
@@ -48,28 +115,28 @@ export default function DashboardPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <KPICard
           title="CA HT"
-          value={statsLoading ? null : formatCurrency(stats?.caHT || 0)}
+          value={statsLoading ? null : formatCurrency(stats.caHT || 0)}
           icon={<Euro className="size-4 text-emerald-400" />}
-          sub={`${stats?.devisSignes || 0} devis signés`}
+          sub={`${stats.devisSignes || 0} devis signés`}
         />
         <KPICard
           title="Encaissé"
-          value={statsLoading ? null : formatCurrency(stats?.encaissements || 0)}
+          value={statsLoading ? null : formatCurrency(stats.encaissements || 0)}
           icon={<Banknote className="size-4 text-blue-400" />}
-          sub={`${stats?.chantiersActifs || 0} chantiers actifs`}
+          sub={`${stats.chantiersActifs || 0} chantiers actifs`}
         />
         <KPICard
           title="Reste à encaisser"
-          value={statsLoading ? null : formatCurrency(stats?.resteAEncaisser || 0)}
+          value={statsLoading ? null : formatCurrency(stats.resteAEncaisser || 0)}
           icon={<Clock className="size-4 text-amber-400" />}
-          sub={`${stats?.devisEnCours || 0} devis en cours`}
+          sub={`${stats.devisEnCours || 0} devis en cours`}
         />
         <KPICard
           title="En retard"
-          value={statsLoading ? null : formatCurrency(stats?.enRetard || 0)}
+          value={statsLoading ? null : formatCurrency(stats.enRetard || 0)}
           icon={<AlertTriangle className="size-4 text-red-400" />}
-          sub={`${stats?.enRetardCount || 0} facture${(stats?.enRetardCount || 0) > 1 ? "s" : ""}`}
-          alert={stats?.enRetardCount > 0}
+          sub={`${stats.enRetardCount || 0} facture${(stats.enRetardCount || 0) > 1 ? "s" : ""}`}
+          alert={stats.enRetardCount > 0}
         />
       </div>
 
@@ -81,7 +148,7 @@ export default function DashboardPage() {
             <CardTitle className="text-sm font-medium">Chiffre d'affaires mensuel (6 mois)</CardTitle>
           </CardHeader>
           <CardContent>
-            {stats?.monthlyData ? (
+            {stats.monthlyData ? (
               <div className="flex items-end gap-3 h-44">
                 {stats.monthlyData.map((m: any, i: number) => {
                   const maxVal = Math.max(...stats.monthlyData.map((d: any) => Math.max(d.ca, d.achats)), 1);
@@ -114,7 +181,7 @@ export default function DashboardPage() {
             <CardTitle className="text-sm font-medium">Impayés</CardTitle>
           </CardHeader>
           <CardContent>
-            {stats?.unpaidByStatus ? (
+            {stats.unpaidByStatus ? (
               <DonutChart
                 segments={[
                   { label: "Envoyées", value: stats.unpaidByStatus.envoyee || 0, color: "#F59E0B" },
@@ -130,7 +197,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Overdue Invoices Alert */}
-      {(stats?.recentInvoices || []).filter((i: any) => i.dueDate && new Date(i.dueDate) < new Date() && i.status === "envoyée").length > 0 && (
+      {(stats.recentInvoices || []).filter((i: any) => i.dueDate && new Date(i.dueDate) < new Date() && i.status === "envoyée").length > 0 && (
         <Card className="border-red-500/30 bg-red-500/5 mb-6">
           <CardContent className="py-3 px-4">
             <div className="flex items-center gap-2 mb-2">
@@ -138,7 +205,7 @@ export default function DashboardPage() {
               <span className="text-sm font-medium text-red-400">Factures en retard</span>
             </div>
             <div className="space-y-1">
-              {(stats?.recentInvoices || [])
+              {(stats.recentInvoices || [])
                 .filter((i: any) => i.dueDate && new Date(i.dueDate) < new Date() && i.status === "envoyée")
                 .map((inv: any) => {
                   const c = contactMap.get(inv.contactId);
@@ -166,7 +233,7 @@ export default function DashboardPage() {
             </Link>
           </CardHeader>
           <CardContent className="space-y-2">
-            {(stats?.recentQuotes || []).map((q: any) => {
+            {(stats.recentQuotes || []).map((q: any) => {
               const c = contactMap.get(q.contactId);
               return (
                 <div key={q.id} className="flex items-center justify-between py-1.5 border-b border-border/50 last:border-0" data-testid={`quote-row-${q.id}`}>
@@ -181,7 +248,7 @@ export default function DashboardPage() {
                 </div>
               );
             })}
-            {(stats?.recentQuotes || []).length === 0 && <p className="text-sm text-muted-foreground py-4 text-center">Aucun devis</p>}
+            {(stats.recentQuotes || []).length === 0 && <p className="text-sm text-muted-foreground py-4 text-center">Aucun devis</p>}
           </CardContent>
         </Card>
 
@@ -196,7 +263,7 @@ export default function DashboardPage() {
             </Link>
           </CardHeader>
           <CardContent className="space-y-2">
-            {(stats?.recentInvoices || []).map((inv: any) => {
+            {(stats.recentInvoices || []).map((inv: any) => {
               const c = contactMap.get(inv.contactId);
               const ttc = Math.abs(parseFloat(inv.amountTTC || "0"));
               const paid = parseFloat(inv.amountPaid || "0");
@@ -227,17 +294,17 @@ export default function DashboardPage() {
                 </div>
               );
             })}
-            {(stats?.recentInvoices || []).length === 0 && <p className="text-sm text-muted-foreground py-4 text-center">Aucune facture</p>}
+            {(stats.recentInvoices || []).length === 0 && <p className="text-sm text-muted-foreground py-4 text-center">Aucune facture</p>}
           </CardContent>
         </Card>
       </div>
 
       {/* Secondary stats row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-        <MiniStat icon={<FileText className="size-3.5 text-primary" />} label="Devis en cours" value={stats?.devisEnCours || 0} />
-        <MiniStat icon={<FileCheck className="size-3.5 text-emerald-400" />} label="Devis signés" value={stats?.devisSignes || 0} />
-        <MiniStat icon={<HardHat className="size-3.5 text-amber-400" />} label="Chantiers actifs" value={stats?.chantiersActifs || 0} />
-        <MiniStat icon={<Users className="size-3.5 text-blue-400" />} label="Clients" value={stats?.clientsCount || 0} />
+        <MiniStat icon={<FileText className="size-3.5 text-primary" />} label="Devis en cours" value={stats.devisEnCours || 0} />
+        <MiniStat icon={<FileCheck className="size-3.5 text-emerald-400" />} label="Devis signés" value={stats.devisSignes || 0} />
+        <MiniStat icon={<HardHat className="size-3.5 text-amber-400" />} label="Chantiers actifs" value={stats.chantiersActifs || 0} />
+        <MiniStat icon={<Users className="size-3.5 text-blue-400" />} label="Clients" value={stats.clientsCount || 0} />
       </div>
     </AppLayout>
   );

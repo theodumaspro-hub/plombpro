@@ -3,6 +3,8 @@ import { AppLayout } from "@/components/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
+import { db } from "@/lib/supabaseData";
 import { formatCurrency, formatPercent, contactName } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -33,33 +35,32 @@ interface PilotageStats {
   monthlyRevenue: { month: string; facturation: number; encaissement: number }[];
   revenueByType: Record<string, number>;
   paymentStatus: { payee: number; partiellement: number; envoyee: number; enRetard: number; brouillon: number };
-  topOutstanding: { contactId: number; name: string; amount: number }[];
+  topOutstanding: { contact_id: number; name: string; amount: number }[];
   profitability: { totalInvoicedHT: number; totalPurchasesHT: number; margeBrute: number; tauxMarge: number };
 }
 
 export default function PilotagePage() {
   const [revenueMode, setRevenueMode] = useState<"facturation" | "encaissement">("facturation");
 
-  const { data: pilotageStats } = useQuery<PilotageStats>({ queryKey: ["/api/pilotage/stats"] });
-  const { data: quotes = [] } = useQuery<Quote[]>({ queryKey: ["/api/quotes"] });
-  const { data: invoices = [] } = useQuery<Invoice[]>({ queryKey: ["/api/invoices"] });
-  const { data: chantiers = [] } = useQuery<Chantier[]>({ queryKey: ["/api/chantiers"] });
-  const { data: contacts = [] } = useQuery<Contact[]>({ queryKey: ["/api/contacts"] });
-  const { data: purchases = [] } = useQuery<Purchase[]>({ queryKey: ["/api/purchases"] });
+  const { data: quotes = [] } = useQuery<any[]>({ queryKey: ["quotes"], queryFn: () => db.getQuotes() });
+  const { data: invoices = [] } = useQuery<any[]>({ queryKey: ["invoices"], queryFn: () => db.getInvoices() });
+  const { data: chantiers = [] } = useQuery<any[]>({ queryKey: ["chantiers"], queryFn: () => db.getChantiers() });
+  const { data: contacts = [] } = useQuery<any[]>({ queryKey: ["contacts"], queryFn: () => db.getContacts() });
+  const { data: purchases = [] } = useQuery<any[]>({ queryKey: ["purchases"], queryFn: () => db.getPurchases() });
 
   // KPIs from local data
-  const totalQuoted = quotes.reduce((s, q) => s + parseFloat(q.amountHT || "0"), 0);
-  const totalSigned = quotes.filter(q => q.status === "signé").reduce((s, q) => s + parseFloat(q.amountHT || "0"), 0);
+  const totalQuoted = quotes.reduce((s, q) => s + parseFloat(q.amount_ht || "0"), 0);
+  const totalSigned = quotes.filter(q => q.status === "signé").reduce((s, q) => s + parseFloat(q.amount_ht || "0"), 0);
   const conversionRate = quotes.length > 0 ? (quotes.filter(q => q.status === "signé").length / quotes.length * 100) : 0;
-  const totalInvoicedHT = invoices.filter(i => i.type !== "avoir").reduce((s, i) => s + parseFloat(i.amountHT || "0"), 0);
-  const totalPaid = invoices.reduce((s, i) => s + parseFloat(i.amountPaid || "0"), 0);
-  const totalPurchases = purchases.filter(p => p.status !== "annulé").reduce((s, p) => s + parseFloat(p.amountHT || "0"), 0);
+  const totalInvoicedHT = invoices.filter(i => i.type !== "avoir").reduce((s, i) => s + parseFloat(i.amount_ht || "0"), 0);
+  const totalPaid = invoices.reduce((s, i) => s + parseFloat(i.amount_paid || "0"), 0);
+  const totalPurchases = purchases.filter(p => p.status !== "annulé").reduce((s, p) => s + parseFloat(p.amount_ht || "0"), 0);
   const grossMargin = totalInvoicedHT > 0 ? ((totalInvoicedHT - totalPurchases) / totalInvoicedHT * 100) : 0;
 
   // Top clients by billed
   const topClients = contacts
-    .filter(c => c.type === "client" && parseFloat(c.totalBilled || "0") > 0)
-    .sort((a, b) => parseFloat(b.totalBilled || "0") - parseFloat(a.totalBilled || "0"))
+    .filter(c => c.type === "client" && parseFloat(c.total_billed || "0") > 0)
+    .sort((a, b) => parseFloat(b.total_billed || "0") - parseFloat(a.total_billed || "0"))
     .slice(0, 5);
 
   // Chantier profitability
@@ -67,16 +68,42 @@ export default function PilotagePage() {
     .filter(c => c.margin !== null && c.margin !== undefined)
     .sort((a, b) => parseFloat(b.margin || "0") - parseFloat(a.margin || "0"));
 
-  // Monthly revenue data
-  const monthlyData = pilotageStats?.monthlyRevenue || [];
+  // Monthly revenue data — compute client-side from invoices
+  const monthlyData: { month: string; facturation: number; encaissement: number }[] = (() => {
+    const now = new Date();
+    const months: { month: string; facturation: number; encaissement: number }[] = [];
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      const label = d.toLocaleDateString("fr-FR", { month: "short" });
+      const monthInvoices = invoices.filter(inv => {
+        const ca = inv.created_at ? new Date(inv.created_at) : null;
+        return ca && `${ca.getFullYear()}-${String(ca.getMonth() + 1).padStart(2, "0")}` === key;
+      });
+      const facturation = monthInvoices.reduce((s, inv) => s + parseFloat(inv.amount_ht || "0"), 0);
+      const encaissement = monthInvoices.reduce((s, inv) => s + parseFloat(inv.amount_paid || "0"), 0);
+      months.push({ month: label, facturation, encaissement });
+    }
+    return months;
+  })();
   const maxMonthlyVal = Math.max(...monthlyData.map(m => Math.max(m.facturation, m.encaissement)), 1);
 
-  // Revenue by type
-  const revenueByType = pilotageStats?.revenueByType || {};
+  // Revenue by type — compute from invoice lines (approximate from invoices)
+  const revenueByType: Record<string, number> = {};
   const totalByType = Object.values(revenueByType).reduce((s, v) => s + v, 0);
 
-  // Payment status donut
-  const ps = pilotageStats?.paymentStatus || { payee: 0, partiellement: 0, envoyee: 0, enRetard: 0, brouillon: 0 };
+  // Payment status donut — compute from invoices
+  const ps = (() => {
+    let payee = 0, partiellement = 0, envoyee = 0, enRetard = 0, brouillon = 0;
+    for (const inv of invoices) {
+      if (inv.status === "payée") payee++;
+      else if (inv.status === "partiellement_payée") partiellement++;
+      else if (inv.status === "envoyée") envoyee++;
+      else if (inv.status === "en_retard") enRetard++;
+      else if (inv.status === "brouillon") brouillon++;
+    }
+    return { payee, partiellement, envoyee, enRetard, brouillon };
+  })();
   const totalStatusCount = ps.payee + ps.partiellement + ps.envoyee + ps.enRetard + ps.brouillon;
   const donutSegments = [
     { label: "Payée", count: ps.payee, color: "#10B981" },
@@ -87,7 +114,32 @@ export default function PilotagePage() {
   ].filter(s => s.count > 0);
 
   // Profitability
-  const prof = pilotageStats?.profitability;
+  const prof = {
+    totalInvoicedHT,
+    totalPurchasesHT: totalPurchases,
+    margeBrute: totalInvoicedHT - totalPurchases,
+    tauxMarge: totalInvoicedHT > 0 ? ((totalInvoicedHT - totalPurchases) / totalInvoicedHT * 100) : 0,
+  };
+
+  // Top outstanding — compute from invoices
+  const topOutstanding: { contact_id: number; name: string; amount: number }[] = (() => {
+    const byContact: Record<number, { contact_id: number; name: string; amount: number }> = {};
+    for (const inv of invoices) {
+      if (!inv.contact_id) continue;
+      const owed = parseFloat(inv.amount_ttc || "0") - parseFloat(inv.amount_paid || "0");
+      if (owed <= 0) continue;
+      if (!byContact[inv.contact_id]) {
+        const c = contacts.find(ct => ct.id === inv.contact_id);
+        byContact[inv.contact_id] = {
+          contact_id: inv.contact_id,
+          name: c ? contactName({ firstName: c.first_name, lastName: c.last_name, company: c.company }) : `Contact #${inv.contact_id}`,
+          amount: 0,
+        };
+      }
+      byContact[inv.contact_id].amount += owed;
+    }
+    return Object.values(byContact).sort((a, b) => b.amount - a.amount).slice(0, 5);
+  })();
 
   return (
     <AppLayout title="Pilotage">
@@ -257,10 +309,10 @@ export default function PilotagePage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {(pilotageStats?.topOutstanding || []).length > 0 ? (
+            {topOutstanding.length > 0 ? (
               <div className="space-y-2.5">
-                {pilotageStats!.topOutstanding.map((item, i) => (
-                  <div key={item.contactId} className="flex items-center justify-between py-1" data-testid={`outstanding-${item.contactId}`}>
+                {topOutstanding.map((item, i) => (
+                  <div key={item.contact_id} className="flex items-center justify-between py-1" data-testid={`outstanding-${item.contact_id}`}>
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-muted-foreground w-4">{i + 1}.</span>
                       <span className="text-sm font-medium truncate max-w-[140px]">{item.name}</span>
@@ -362,10 +414,10 @@ export default function PilotagePage() {
                 <div key={c.id} className="flex items-center justify-between py-1.5" data-testid={`top-client-${c.id}`}>
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-muted-foreground w-5">{i + 1}.</span>
-                    <span className="text-sm font-medium">{contactName(c)}</span>
+                    <span className="text-sm font-medium">{contactName({ firstName: c.first_name, lastName: c.last_name, company: c.company })}</span>
                     {c.company && <span className="text-xs text-muted-foreground">{c.company}</span>}
                   </div>
-                  <span className="text-sm font-medium">{formatCurrency(c.totalBilled)}</span>
+                  <span className="text-sm font-medium">{formatCurrency(c.total_billed)}</span>
                 </div>
               ))}
               {topClients.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">Aucune donnée</p>}
@@ -389,7 +441,7 @@ export default function PilotagePage() {
                       <span className="text-xs text-muted-foreground ml-2">{ch.title}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">{formatCurrency(ch.estimatedAmountHT)}</span>
+                      <span className="text-sm font-medium">{formatCurrency(ch.estimated_amount_ht)}</span>
                       <span className={`text-sm font-bold ${m >= 40 ? "text-emerald-400" : m >= 20 ? "text-amber-400" : "text-red-400"}`}>
                         {formatPercent(m)}
                       </span>

@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient } from "@/lib/queryClient";
+import { db } from "@/lib/supabaseData";
 import { useToast } from "@/hooks/use-toast";
 import {
   Wrench, Building2, MapPin, Phone, FileText, CreditCard,
@@ -50,9 +51,9 @@ export default function OnboardingWizard({ onComplete }: OnboardingProps) {
   });
 
   const updateMut = useMutation({
-    mutationFn: async (payload: any) => apiRequest("PATCH", "/api/company", payload),
+    mutationFn: async (payload: any) => db.updateCompanySettings(payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/company"] });
+      queryClient.invalidateQueries({ queryKey: ["company"] });
     },
   });
 

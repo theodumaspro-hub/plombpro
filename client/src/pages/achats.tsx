@@ -9,13 +9,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient } from "@/lib/queryClient";
+import { db } from "@/lib/supabaseData";
 import { formatCurrency, formatDate, contactName } from "@/lib/format";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Search, MoreHorizontal, PackageCheck, Truck } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import type { Purchase, Contact, Chantier } from "@shared/schema";
 
 export default function AchatsPage() {
   const [location, setLocation] = useLocation();
@@ -30,9 +30,9 @@ export default function AchatsPage() {
   const [search, setSearch] = useState("");
   const { toast } = useToast();
 
-  const { data: purchases = [] } = useQuery<Purchase[]>({ queryKey: ["/api/purchases"] });
-  const { data: contacts = [] } = useQuery<Contact[]>({ queryKey: ["/api/contacts"] });
-  const { data: chantiers = [] } = useQuery<Chantier[]>({ queryKey: ["/api/chantiers"] });
+  const { data: purchases = [] } = useQuery<any[]>({ queryKey: ["purchases"], queryFn: () => db.getPurchases() });
+  const { data: contacts = [] } = useQuery<any[]>({ queryKey: ["contacts"], queryFn: () => db.getContacts() });
+  const { data: chantiers = [] } = useQuery<any[]>({ queryKey: ["chantiers"], queryFn: () => db.getChantiers() });
   const contactMap = new Map(contacts.map(c => [c.id, c]));
   const chantierMap = new Map(chantiers.map(c => [c.id, c]));
   const suppliers = contacts.filter(c => c.type === "fournisseur");
@@ -40,18 +40,18 @@ export default function AchatsPage() {
   const [form, setForm] = useState({ supplierId: "", chantierId: "", amountHT: "", tvaRate: "20", orderDate: "", notes: "" });
 
   const createMut = useMutation({
-    mutationFn: async (data: any) => apiRequest("POST", "/api/purchases", data),
+    mutationFn: async (data: any) => db.createPurchase(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/purchases"] });
+      queryClient.invalidateQueries({ queryKey: ["purchases"] });
       setOpen(false);
       toast({ title: "Commande créée" });
     },
   });
 
   const updateMut = useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: any }) => apiRequest("PATCH", `/api/purchases/${id}`, data),
+    mutationFn: async ({ id, data }: { id: number; data: any }) => db.updatePurchase(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/purchases"] });
+      queryClient.invalidateQueries({ queryKey: ["purchases"] });
       toast({ title: "Commande mise à jour" });
     },
   });
@@ -62,28 +62,28 @@ export default function AchatsPage() {
     const tva = ht * (parseFloat(form.tvaRate) / 100);
     const num = `ACH-2026-${String(purchases.length + 1).padStart(3, "0")}`;
     createMut.mutate({
-      supplierId: Number(form.supplierId),
-      chantierId: form.chantierId ? Number(form.chantierId) : null,
+      supplier_id: Number(form.supplierId),
+      chantier_id: form.chantierId ? Number(form.chantierId) : null,
       number: num,
       status: "brouillon",
-      amountHT: String(ht),
-      amountTVA: String(tva.toFixed(2)),
-      amountTTC: String((ht + tva).toFixed(2)),
-      orderDate: form.orderDate || null,
+      amount_ht: String(ht),
+      amount_tva: String(tva.toFixed(2)),
+      amount_ttc: String((ht + tva).toFixed(2)),
+      order_date: form.orderDate || null,
       notes: form.notes || null,
     });
   }
 
   const filtered = purchases.filter(p => {
     if (search) {
-      const s = contactMap.get(p.supplierId);
+      const s = contactMap.get(p.supplier_id);
       const term = search.toLowerCase();
       return p.number.toLowerCase().includes(term) || (s ? contactName(s) : "").toLowerCase().includes(term);
     }
     return true;
   });
 
-  const totalHT = purchases.filter(p => p.status !== "annulé").reduce((s, p) => s + parseFloat(p.amountHT || "0"), 0);
+  const totalHT = purchases.filter(p => p.status !== "annulé").reduce((s, p) => s + parseFloat(p.amount_ht || "0"), 0);
 
   return (
     <AppLayout
@@ -123,17 +123,17 @@ export default function AchatsPage() {
             </thead>
             <tbody>
               {filtered.map(p => {
-                const s = contactMap.get(p.supplierId);
-                const ch = p.chantierId ? chantierMap.get(p.chantierId) : null;
+                const s = contactMap.get(p.supplier_id);
+                const ch = p.chantier_id ? chantierMap.get(p.chantier_id) : null;
                 return (
                   <tr key={p.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors" data-testid={`purchase-row-${p.id}`}>
                     <td className="py-2.5 px-4 font-medium">{p.number}</td>
                     <td className="py-2.5 px-4 text-muted-foreground">{s ? contactName(s) : "—"}</td>
                     <td className="py-2.5 px-4 text-muted-foreground text-xs">{ch ? ch.reference : "—"}</td>
                     <td className="py-2.5 px-4"><StatusBadge status={p.status} /></td>
-                    <td className="py-2.5 px-4 text-right font-medium">{formatCurrency(p.amountHT)}</td>
-                    <td className="py-2.5 px-4 text-muted-foreground text-xs">{formatDate(p.orderDate)}</td>
-                    <td className="py-2.5 px-4 text-muted-foreground text-xs">{formatDate(p.deliveryDate)}</td>
+                    <td className="py-2.5 px-4 text-right font-medium">{formatCurrency(p.amount_ht)}</td>
+                    <td className="py-2.5 px-4 text-muted-foreground text-xs">{formatDate(p.order_date)}</td>
+                    <td className="py-2.5 px-4 text-muted-foreground text-xs">{formatDate(p.delivery_date)}</td>
                     <td className="py-2.5 px-4">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -141,12 +141,12 @@ export default function AchatsPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           {p.status === "brouillon" && (
-                            <DropdownMenuItem onClick={() => updateMut.mutate({ id: p.id, data: { status: "commandé", orderDate: new Date().toISOString().split("T")[0] } })}>
+                            <DropdownMenuItem onClick={() => updateMut.mutate({ id: p.id, data: { status: "commandé", order_date: new Date().toISOString().split("T")[0] } })}>
                               <Truck className="size-3.5 mr-2" /> Commander
                             </DropdownMenuItem>
                           )}
                           {p.status === "commandé" && (
-                            <DropdownMenuItem onClick={() => updateMut.mutate({ id: p.id, data: { status: "reçu", deliveryDate: new Date().toISOString().split("T")[0] } })}>
+                            <DropdownMenuItem onClick={() => updateMut.mutate({ id: p.id, data: { status: "reçu", delivery_date: new Date().toISOString().split("T")[0] } })}>
                               <PackageCheck className="size-3.5 mr-2" /> Marquer reçu
                             </DropdownMenuItem>
                           )}

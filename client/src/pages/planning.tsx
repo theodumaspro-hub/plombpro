@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient } from "@/lib/queryClient";
+import { db } from "@/lib/supabaseData";
 import { contactName } from "@/lib/format";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useToast } from "@/hooks/use-toast";
@@ -30,10 +31,10 @@ export default function PlanningPage() {
   }, []);
   const { toast } = useToast();
 
-  const { data: appointments = [] } = useQuery<Appointment[]>({ queryKey: ["/api/appointments"] });
-  const { data: contacts = [] } = useQuery<Contact[]>({ queryKey: ["/api/contacts"] });
-  const { data: resources = [] } = useQuery<Resource[]>({ queryKey: ["/api/resources"] });
-  const { data: chantiers = [] } = useQuery<Chantier[]>({ queryKey: ["/api/chantiers"] });
+  const { data: appointments = [] } = useQuery<any[]>({ queryKey: ["appointments"], queryFn: () => db.getAppointments() });
+  const { data: contacts = [] } = useQuery<any[]>({ queryKey: ["contacts"], queryFn: () => db.getContacts() });
+  const { data: resources = [] } = useQuery<any[]>({ queryKey: ["resources"], queryFn: () => db.getResources() });
+  const { data: chantiers = [] } = useQuery<any[]>({ queryKey: ["chantiers"], queryFn: () => db.getChantiers() });
   const contactMap = new Map(contacts.map(c => [c.id, c]));
   const resourceMap = new Map(resources.map(r => [r.id, r]));
   const people = resources.filter(r => r.type !== "materiel");
@@ -44,9 +45,9 @@ export default function PlanningPage() {
   });
 
   const createMut = useMutation({
-    mutationFn: async (data: any) => apiRequest("POST", "/api/appointments", data),
+    mutationFn: async (data: any) => db.createAppointment(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
+      queryClient.invalidateQueries({ queryKey: ["appointments"] });
       setOpen(false);
       toast({ title: "Rendez-vous créé" });
     },
@@ -55,10 +56,14 @@ export default function PlanningPage() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     createMut.mutate({
-      ...form,
-      resourceId: form.resourceId ? Number(form.resourceId) : null,
-      contactId: form.contactId ? Number(form.contactId) : null,
-      chantierId: form.chantierId ? Number(form.chantierId) : null,
+      title: form.title,
+      type: form.type,
+      date: form.date,
+      start_time: form.startTime,
+      end_time: form.endTime,
+      resource_id: form.resourceId ? Number(form.resourceId) : null,
+      contact_id: form.contactId ? Number(form.contactId) : null,
+      chantier_id: form.chantierId ? Number(form.chantierId) : null,
       status: "planifié",
       address: form.address || null,
       city: form.city || null,
@@ -67,7 +72,7 @@ export default function PlanningPage() {
   }
 
   // Group by date
-  const grouped = appointments.reduce<Record<string, Appointment[]>>((acc, a) => {
+  const grouped = appointments.reduce<Record<string, any[]>>((acc, a) => {
     if (!acc[a.date]) acc[a.date] = [];
     acc[a.date].push(a);
     return acc;
@@ -116,9 +121,9 @@ export default function PlanningPage() {
               </div>
 
               <div className="grid gap-2 pl-4 border-l-2 border-border ml-2">
-                {dayAppts.sort((a, b) => a.startTime.localeCompare(b.startTime)).map(appt => {
-                  const r = appt.resourceId ? resourceMap.get(appt.resourceId) : null;
-                  const c = appt.contactId ? contactMap.get(appt.contactId) : null;
+                {dayAppts.sort((a, b) => a.start_time.localeCompare(b.start_time)).map(appt => {
+                  const r = appt.resource_id ? resourceMap.get(appt.resource_id) : null;
+                  const c = appt.contact_id ? contactMap.get(appt.contact_id) : null;
 
                   return (
                     <Card key={appt.id} className={`border-l-4 ${typeColors[appt.type] || "border-l-muted"}`} data-testid={`appointment-card-${appt.id}`}>
@@ -127,13 +132,13 @@ export default function PlanningPage() {
                           <div>
                             <div className="flex items-center gap-2">
                               <Clock className="size-3 text-muted-foreground" />
-                              <span className="text-xs font-medium">{appt.startTime} — {appt.endTime}</span>
+                              <span className="text-xs font-medium">{appt.start_time} — {appt.end_time}</span>
                               <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{typeLabels[appt.type] || appt.type}</span>
                             </div>
                             <h3 className="text-sm font-medium mt-1">{appt.title}</h3>
                             <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                               {r && <span className="flex items-center gap-1"><User className="size-3" />{r.name}</span>}
-                              {c && <span>{contactName(c)}</span>}
+                              {c && <span>{contactName({ firstName: c.first_name, lastName: c.last_name, company: c.company })}</span>}
                               {appt.city && <span className="flex items-center gap-1"><MapPin className="size-3" />{appt.city}</span>}
                             </div>
                           </div>
@@ -196,7 +201,7 @@ export default function PlanningPage() {
                 <SelectTrigger><SelectValue placeholder="Aucun" /></SelectTrigger>
                 <SelectContent>
                   {contacts.filter(c => c.type === "client").map(c => (
-                    <SelectItem key={c.id} value={String(c.id)}>{contactName(c)}</SelectItem>
+                    <SelectItem key={c.id} value={String(c.id)}>{contactName({ firstName: c.first_name, lastName: c.last_name, company: c.company })}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

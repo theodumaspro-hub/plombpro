@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { queryClient } from "@/lib/queryClient";
+import { db } from "@/lib/supabaseData";
 import { useToast } from "@/hooks/use-toast";
 import type { CompanySettings } from "@shared/schema";
 import {
@@ -105,11 +106,15 @@ export default function SubscriptionPage({ onComplete, onBack }: SubscriptionPro
   const [billing, setBilling] = useState<"monthly" | "yearly">("yearly");
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
-  const { data: company } = useQuery<CompanySettings>({ queryKey: ["/api/company"] });
+  const { data: company } = useQuery<CompanySettings>({ queryKey: ["company"], queryFn: () => db.getCompanySettings() });
 
   const subscribeMut = useMutation({
     mutationFn: async (planId: string) => {
-      await apiRequest("POST", "/api/subscription/checkout", { planId });
+      await db.updateCompanySettings({
+        plan: planId,
+        plan_start_date: new Date().toISOString(),
+        trial_ends_at: new Date(Date.now() + 14 * 86400000).toISOString(),
+      });
       return { ok: true };
     },
     onSuccess: () => {
@@ -120,7 +125,7 @@ export default function SubscriptionPage({ onComplete, onBack }: SubscriptionPro
           title: "Abonnement activé",
           description: `Votre essai gratuit de 14 jours sur la formule ${selectedPlan.toUpperCase()} a commencé.`,
         });
-        queryClient.invalidateQueries({ queryKey: ["/api/company"] });
+        queryClient.invalidateQueries({ queryKey: ["company"] });
         onComplete();
       }, 1500);
     },
@@ -233,7 +238,7 @@ export default function SubscriptionPage({ onComplete, onBack }: SubscriptionPro
                       ? "border-primary bg-primary/5 shadow-lg shadow-primary/10"
                       : "border-border/50 hover:border-primary/30"
                   } ${plan.popular ? "md:-mt-3 md:mb-0" : ""}`}>
-                    
+
                     {/* Popular badge */}
                     {plan.popular && (
                       <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
@@ -280,9 +285,9 @@ export default function SubscriptionPage({ onComplete, onBack }: SubscriptionPro
                       {/* CTA button */}
                       <Button
                         className={`w-full mb-5 h-11 font-semibold text-sm ${
-                          plan.popular 
-                            ? "bg-primary hover:bg-primary/90" 
-                            : isSelected 
+                          plan.popular
+                            ? "bg-primary hover:bg-primary/90"
+                            : isSelected
                               ? "bg-primary hover:bg-primary/90"
                               : ""
                         }`}

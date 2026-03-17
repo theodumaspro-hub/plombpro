@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { queryClient } from "@/lib/queryClient";
 import { authStore } from "@/lib/authStore";
 import { useToast } from "@/hooks/use-toast";
 import { ChevronLeft, Mail, Lock, User, Eye, EyeOff } from "lucide-react";
@@ -25,20 +25,15 @@ export default function AuthPage({ mode, onNavigate, onAuth }: AuthPageProps) {
 
   const authMutation = useMutation({
     mutationFn: async () => {
-      const endpoint = mode === "login" ? "/api/auth/login" : "/api/auth/register";
-      const body = mode === "login"
-        ? { email, password }
-        : { email, password, name };
-      const res = await apiRequest("POST", endpoint, body);
-      return res.json();
-    },
-    onSuccess: (data: any) => {
-      // Store session token from Supabase
-      if (data.session) {
-        authStore.setSession(data.session, data.user);
+      if (mode === "login") {
+        return authStore.login(email, password);
+      } else {
+        return authStore.register(email, password, name);
       }
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/company"] });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["auth"] });
+      queryClient.invalidateQueries({ queryKey: ["company"] });
       toast({
         title: mode === "login" ? "Connexion réussie" : "Compte créé",
         description: mode === "login" ? "Bienvenue sur PlombPro" : "Bienvenue ! Votre essai gratuit de 14 jours commence.",

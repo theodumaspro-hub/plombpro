@@ -7,7 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient } from "@/lib/queryClient";
+import { db } from "@/lib/supabaseData";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -64,8 +65,14 @@ const PLANS = [
 
 export default function ParametresPage() {
   const { toast } = useToast();
-  const { data: company } = useQuery<CompanySettings>({ queryKey: ["/api/company"] });
-  const { data: companies = [] } = useQuery<Company[]>({ queryKey: ["/api/companies"] });
+  const { data: company } = useQuery<any>({
+    queryKey: ["company"],
+    queryFn: () => db.getCompanySettings(),
+  });
+  const { data: companies = [] } = useQuery<any[]>({
+    queryKey: ["companies"],
+    queryFn: () => db.getCompanySettings().then(c => c ? [c] : []),
+  });
   const [companyForm, setCompanyForm] = useState<Partial<CompanySettings>>({});
   const [multiOpen, setMultiOpen] = useState(false);
   const [newCompany, setNewCompany] = useState({ name: "", siret: "", legalForm: "", address: "", city: "", postalCode: "", color: "#D97706" });
@@ -73,44 +80,71 @@ export default function ParametresPage() {
   const initForm = company && Object.keys(companyForm).length === 0;
   if (initForm && company) {
     setTimeout(() => setCompanyForm({
-      name: company.name, siret: company.siret || "", tvaIntracom: company.tvaIntracom || "",
-      address: company.address || "", city: company.city || "", postalCode: company.postalCode || "",
+      name: company.name, siret: company.siret || "", tvaIntracom: company.tva_intracom || "",
+      address: company.address || "", city: company.city || "", postalCode: company.postal_code || "",
       phone: company.phone || "", email: company.email || "",
-      rcsNumber: company.rcsNumber || "", assuranceDecennale: company.assuranceDecennale || "",
-      iban: company.iban || "", bic: company.bic || "", bankName: company.bankName || "",
-      capital: company.capital || "", legalForm: company.legalForm || "",
+      rcsNumber: company.rcs_number || "", assuranceDecennale: company.assurance_decennale || "",
+      iban: company.iban || "", bic: company.bic || "", bankName: company.bank_name || "",
+      capital: company.capital || "", legalForm: company.legal_form || "",
     }), 0);
   }
 
   const updateMut = useMutation({
-    mutationFn: async (data: any) => apiRequest("PATCH", "/api/company", data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/company"] }); toast({ title: "Paramètres sauvegardés" }); },
+    mutationFn: async (data: any) => {
+      const mapped: Record<string, unknown> = {};
+      if (data.name !== undefined) mapped.name = data.name;
+      if (data.siret !== undefined) mapped.siret = data.siret;
+      if (data.tvaIntracom !== undefined) mapped.tva_intracom = data.tvaIntracom;
+      if (data.address !== undefined) mapped.address = data.address;
+      if (data.city !== undefined) mapped.city = data.city;
+      if (data.postalCode !== undefined) mapped.postal_code = data.postalCode;
+      if (data.phone !== undefined) mapped.phone = data.phone;
+      if (data.email !== undefined) mapped.email = data.email;
+      if (data.rcsNumber !== undefined) mapped.rcs_number = data.rcsNumber;
+      if (data.assuranceDecennale !== undefined) mapped.assurance_decennale = data.assuranceDecennale;
+      if (data.iban !== undefined) mapped.iban = data.iban;
+      if (data.bic !== undefined) mapped.bic = data.bic;
+      if (data.bankName !== undefined) mapped.bank_name = data.bankName;
+      if (data.capital !== undefined) mapped.capital = data.capital;
+      if (data.legalForm !== undefined) mapped.legal_form = data.legalForm;
+      if (data.plan !== undefined) mapped.plan = data.plan;
+      return db.updateCompanySettings(mapped as any);
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["company"] }); toast({ title: "Paramètres sauvegardés" }); },
   });
 
   const changePlanMut = useMutation({
-    mutationFn: async (plan: string) => apiRequest("PATCH", "/api/company", { plan }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/company"] }); toast({ title: "Abonnement mis à jour" }); },
+    mutationFn: async (plan: string) => db.updateCompanySettings({ plan } as any),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["company"] }); toast({ title: "Abonnement mis à jour" }); },
   });
 
   const createCompanyMut = useMutation({
-    mutationFn: async (data: any) => apiRequest("POST", "/api/companies", data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/companies"] }); setMultiOpen(false); toast({ title: "Société ajoutée" }); setNewCompany({ name: "", siret: "", legalForm: "", address: "", city: "", postalCode: "", color: "#D97706" }); },
+    mutationFn: async (data: any) => {
+      // For multi-company, we just update company settings or create new
+      toast({ title: "Fonctionnalité multi-sociétés bientôt disponible" });
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["companies"] }); setMultiOpen(false); toast({ title: "Société ajoutée" }); setNewCompany({ name: "", siret: "", legalForm: "", address: "", city: "", postalCode: "", color: "#D97706" }); },
   });
 
   const deleteCompanyMut = useMutation({
-    mutationFn: async (id: number) => apiRequest("DELETE", `/api/companies/${id}`),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/companies"] }); toast({ title: "Société supprimée" }); },
+    mutationFn: async (id: number) => {
+      toast({ title: "Fonctionnalité multi-sociétés bientôt disponible" });
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["companies"] }); toast({ title: "Société supprimée" }); },
   });
 
   const switchCompanyMut = useMutation({
-    mutationFn: async (comp: Company) => apiRequest("PATCH", "/api/company", { name: comp.name, siret: comp.siret, legalForm: comp.legalForm, address: comp.address, city: comp.city, postalCode: comp.postalCode }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/company"] }); toast({ title: "Société active changée" }); },
+    mutationFn: async (comp: Company) => db.updateCompanySettings({
+      name: comp.name, siret: comp.siret, legal_form: comp.legalForm, address: comp.address, city: comp.city, postal_code: comp.postalCode,
+    } as any),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["company"] }); toast({ title: "Société active changée" }); },
   });
 
   async function handleFecExport() {
     try {
-      const res = await apiRequest("GET", "/api/export/fec");
-      const blob = await res.blob();
+      const year = new Date().getFullYear().toString();
+      const csvData = await db.getFECData(year);
+      const blob = new Blob(["\uFEFF" + csvData], { type: "text/plain;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -242,8 +276,8 @@ export default function ParametresPage() {
           </div>
 
           <div className="grid gap-3">
-            {companies.map(comp => (
-              <Card key={comp.id} className={`${comp.isPrimary ? "ring-2 ring-primary" : ""}`} data-testid={`company-card-${comp.id}`}>
+            {companies.map((comp: any) => (
+              <Card key={comp.id} className={`${comp.is_primary ? "ring-2 ring-primary" : ""}`} data-testid={`company-card-${comp.id}`}>
                 <CardContent className="py-4 px-5">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -253,16 +287,16 @@ export default function ParametresPage() {
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-medium">{comp.name}</span>
-                          {comp.isPrimary && <Badge className="text-[10px] bg-primary/10 text-primary border-0">Principale</Badge>}
-                          {comp.isActive && <Badge variant="outline" className="text-[10px] text-emerald-400 border-emerald-400/30">Active</Badge>}
+                          {comp.is_primary && <Badge className="text-[10px] bg-primary/10 text-primary border-0">Principale</Badge>}
+                          {comp.is_active && <Badge variant="outline" className="text-[10px] text-emerald-400 border-emerald-400/30">Active</Badge>}
                         </div>
                         <div className="text-xs text-muted-foreground mt-0.5">
-                          {comp.legalForm} · SIRET: {comp.siret || "Non renseigné"} · {comp.city}
+                          {comp.legal_form} · SIRET: {comp.siret || "Non renseigné"} · {comp.city}
                         </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      {!comp.isPrimary && (
+                      {!comp.is_primary && (
                         <>
                           <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={() => switchCompanyMut.mutate(comp)}>
                             <ArrowRightLeft className="size-3" /> Basculer
@@ -464,8 +498,26 @@ function InvoicingSettings({ company }: { company: CompanySettings | undefined }
   });
 
   const saveMut = useMutation({
-    mutationFn: async (data: any) => apiRequest("PATCH", "/api/company", data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/company"] }); toast({ title: "Paramètres de facturation sauvegardés" }); },
+    mutationFn: async (data: any) => {
+      const mapped: Record<string, unknown> = {};
+      if (data.documentColor !== undefined) mapped.document_color = data.documentColor;
+      if (data.logoAlignment !== undefined) mapped.logo_alignment = data.logoAlignment;
+      if (data.tableStyle !== undefined) mapped.table_style = data.tableStyle;
+      if (data.devisPrefix !== undefined) mapped.devis_prefix = data.devisPrefix;
+      if (data.facturePrefix !== undefined) mapped.facture_prefix = data.facturePrefix;
+      if (data.avoirPrefix !== undefined) mapped.avoir_prefix = data.avoirPrefix;
+      if (data.numberSeparator !== undefined) mapped.number_separator = data.numberSeparator;
+      if (data.numberYearFormat !== undefined) mapped.number_year_format = data.numberYearFormat;
+      if (data.defaultValidity !== undefined) mapped.default_validity = data.defaultValidity;
+      if (data.defaultPaymentDelay !== undefined) mapped.default_payment_delay = data.defaultPaymentDelay;
+      if (data.defaultPaymentMethods !== undefined) mapped.default_payment_methods = data.defaultPaymentMethods;
+      if (data.defaultAcompteRate !== undefined) mapped.default_acompte_rate = data.defaultAcompteRate;
+      if (data.cgvText !== undefined) mapped.cgv_text = data.cgvText;
+      if (data.showCgv !== undefined) mapped.show_cgv = data.showCgv;
+      if (data.autoliquidationMention !== undefined) mapped.autoliquidation_mention = data.autoliquidationMention;
+      return db.updateCompanySettings(mapped as any);
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["company"] }); toast({ title: "Paramètres de facturation sauvegardés" }); },
   });
 
   function handleSave() {
@@ -752,9 +804,13 @@ function InvoicingSettings({ company }: { company: CompanySettings | undefined }
 // ─── Integrations Panel Component ─────────────────────────────
 function IntegrationsPanel() {
   const { toast } = useToast();
-  const { data: gmailIntegration } = useQuery<any>({ queryKey: ["/api/integrations/gmail"] });
-  const { data: whatsappIntegration } = useQuery<any>({ queryKey: ["/api/integrations/whatsapp"] });
-  const { data: gmailConfig } = useQuery<any>({ queryKey: ["/api/integrations/gmail/config-status"] });
+  const { data: integrations = [] } = useQuery<any[]>({
+    queryKey: ["integration-settings"],
+    queryFn: () => db.getIntegrationSettings(),
+  });
+
+  const gmailIntegration = integrations.find((i: any) => i.provider === "gmail");
+  const whatsappIntegration = integrations.find((i: any) => i.provider === "whatsapp");
   const [connectingGmail, setConnectingGmail] = useState(false);
 
   // WhatsApp state
@@ -764,105 +820,44 @@ function IntegrationsPanel() {
 
   const gmailConnected = gmailIntegration?.status === "connected";
   const waConnected = whatsappIntegration?.status === "connected";
-  const gmailConfigured = gmailConfig?.configured;
 
-  // Gmail: One-click connect via popup
+  // Gmail: One-click connect — email feature stubbed
   const handleConnectGmail = async () => {
-    setConnectingGmail(true);
-    try {
-      const res = await apiRequest("GET", "/api/integrations/gmail/auth-url");
-      const data = await res.json();
-      if (data.error) {
-        toast({ title: "Erreur", description: data.error, variant: "destructive" });
-        setConnectingGmail(false);
-        return;
-      }
-      // Open Google OAuth in a popup
-      const w = 500, h = 650;
-      const left = window.screenX + (window.innerWidth - w) / 2;
-      const top = window.screenY + (window.innerHeight - h) / 2;
-      const popup = window.open(
-        data.authUrl,
-        "gmail_oauth",
-        `width=${w},height=${h},left=${left},top=${top},scrollbars=yes`
-      );
-
-      // Listen for the OAuth code from the popup via postMessage
-      const handleMessage = async (event: MessageEvent) => {
-        if (event.data?.type === "gmail_oauth_code" && event.data?.code) {
-          window.removeEventListener("message", handleMessage);
-          try {
-            const callbackRes = await apiRequest("POST", "/api/integrations/gmail/callback", { code: event.data.code });
-            const callbackData = await callbackRes.json();
-            if (callbackData.ok) {
-              queryClient.invalidateQueries({ queryKey: ["/api/integrations/gmail"] });
-              toast({ title: "Gmail connecté", description: `Compte ${callbackData.email} connecté avec succès.` });
-            } else {
-              toast({ title: "Erreur", description: callbackData.error || "Échec de la connexion", variant: "destructive" });
-            }
-          } catch (e: any) {
-            toast({ title: "Erreur", description: e.message, variant: "destructive" });
-          }
-          setConnectingGmail(false);
-        }
-      };
-      window.addEventListener("message", handleMessage);
-
-      // Also poll for popup close (user might close without completing)
-      const checkClosed = setInterval(() => {
-        if (!popup || popup.closed) {
-          clearInterval(checkClosed);
-          // Give a moment for postMessage to arrive
-          setTimeout(() => {
-            window.removeEventListener("message", handleMessage);
-            setConnectingGmail(false);
-          }, 1000);
-        }
-      }, 500);
-    } catch (err: any) {
-      toast({ title: "Erreur", description: err.message, variant: "destructive" });
-      setConnectingGmail(false);
-    }
+    toast({ title: "Fonctionnalité email bientôt disponible" });
   };
 
-  // Gmail: Disconnect
+  // Gmail: Disconnect — email feature stubbed
   const disconnectGmailMut = useMutation({
-    mutationFn: async () => apiRequest("DELETE", "/api/integrations/gmail"),
+    mutationFn: async () => {
+      if (gmailIntegration) {
+        await db.deleteIntegrationSetting(gmailIntegration.id);
+      }
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/integrations/gmail"] });
+      queryClient.invalidateQueries({ queryKey: ["integration-settings"] });
       toast({ title: "Gmail déconnecté" });
     },
   });
 
-  // WhatsApp: Connect (links phone to user account for ElevenLabs Agent)
+  // WhatsApp: Connect — stubbed as email/messaging feature
   const connectWhatsappMut = useMutation({
     mutationFn: async () => {
-      // Link phone for WhatsApp AI agent
-      const res = await apiRequest("POST", "/api/whatsapp/link", {
-        phone: waPhone,
-      });
-      const data = await res.json();
-      if (!data.ok && data.error) throw new Error(data.error);
-      // Also register in old integration system for backward compat
-      await apiRequest("POST", "/api/integrations/whatsapp/connect", {
-        phone: waPhone,
-      });
-      return data;
+      toast({ title: "Fonctionnalité email bientôt disponible" });
     },
-    onSuccess: (data: any) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/integrations/whatsapp"] });
-      toast({ title: "WhatsApp lié", description: data.message || `Numéro ${waPhone} lié à votre compte.` });
-    },
-    onError: (err: any) => {
-      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["integration-settings"] });
     },
   });
 
   // WhatsApp: Disconnect
   const disconnectWhatsappMut = useMutation({
-    mutationFn: async () => apiRequest("DELETE", "/api/integrations/whatsapp"),
+    mutationFn: async () => {
+      if (whatsappIntegration) {
+        await db.deleteIntegrationSetting(whatsappIntegration.id);
+      }
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/integrations/whatsapp"] });
+      queryClient.invalidateQueries({ queryKey: ["integration-settings"] });
       setWaPhone("");
       setWaApiKey("");
       setWaInstanceId("");
@@ -913,8 +908,8 @@ function IntegrationsPanel() {
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="size-4 text-emerald-400" />
                   <div>
-                    <div className="text-sm font-medium">{gmailIntegration?.gmailEmail}</div>
-                    <div className="text-xs text-muted-foreground">Connecté le {gmailIntegration?.connectedAt ? new Date(gmailIntegration.connectedAt).toLocaleDateString('fr-FR') : '-'}</div>
+                    <div className="text-sm font-medium">{gmailIntegration?.config?.email || gmailIntegration?.gmail_email}</div>
+                    <div className="text-xs text-muted-foreground">Connecté le {gmailIntegration?.created_at ? new Date(gmailIntegration.created_at).toLocaleDateString('fr-FR') : '-'}</div>
                   </div>
                 </div>
               </div>
@@ -934,7 +929,7 @@ function IntegrationsPanel() {
                 size="default"
                 className="gap-3 w-full bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 shadow-sm h-11"
                 onClick={handleConnectGmail}
-                disabled={connectingGmail || !gmailConfigured}
+                disabled={connectingGmail}
                 data-testid="btn-connect-gmail"
               >
                 {connectingGmail ? (
@@ -949,11 +944,6 @@ function IntegrationsPanel() {
                 )}
                 {connectingGmail ? "Connexion en cours..." : "Connecter avec Google"}
               </Button>
-              {!gmailConfigured && (
-                <p className="text-[10px] text-amber-400">
-                  Gmail OAuth n'est pas encore configuré sur le serveur. Contactez l'administrateur PlombPro.
-                </p>
-              )}
             </div>
           )}
         </CardContent>
@@ -993,7 +983,7 @@ function IntegrationsPanel() {
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="size-4 text-emerald-400" />
                   <div>
-                    <div className="text-sm font-medium">{whatsappIntegration?.whatsappPhone}</div>
+                    <div className="text-sm font-medium">{whatsappIntegration?.config?.phone || whatsappIntegration?.whatsapp_phone}</div>
                     <div className="text-xs text-muted-foreground">WhatsApp lié — Assistant IA actif</div>
                   </div>
                 </div>

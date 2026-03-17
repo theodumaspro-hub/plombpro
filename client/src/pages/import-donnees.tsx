@@ -4,7 +4,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { queryClient } from "@/lib/queryClient";
+import { db } from "@/lib/supabaseData";
 import { useToast } from "@/hooks/use-toast";
 import { FileSpreadsheet, Upload, CheckCircle2, AlertTriangle, ArrowLeft, ArrowRight, Loader2, Users, Package, Download, Sparkles, Table, Eye } from "lucide-react";
 
@@ -121,16 +122,42 @@ export default function ImportDonneesPage() {
 
   const importMut = useMutation({
     mutationFn: async () => {
-      const endpoint = importType === "contacts" ? "/api/import/contacts" : "/api/import/articles";
-      const res = await apiRequest("POST", endpoint, { csvData: csvText });
-      return res.json() as Promise<ImportResult>;
+      // Parse CSV and import directly via Supabase
+      const parsed = parseCSVPreview(csvText);
+      if (importType === "contacts") {
+        const rows = parsed.rows.map(row => ({
+          last_name: row[0] || null,
+          first_name: row[1] || null,
+          company: row[2] || null,
+          email: row[3] || null,
+          phone: row[4] || null,
+          address: row[5] || null,
+          city: row[6] || null,
+          postal_code: row[7] || null,
+          siret: row[8] || null,
+          type: row[9] || "client",
+        }));
+        return db.importContacts(rows);
+      } else {
+        const rows = parsed.rows.map(row => ({
+          reference: row[0] || null,
+          designation: row[1] || "Article importé",
+          unit: row[2] || "u",
+          purchase_price_ht: row[3]?.replace(",", ".") || null,
+          selling_price_ht: row[4]?.replace(",", ".") || "0",
+          tva_rate: row[5]?.replace(",", ".") || "10",
+          family: row[6] || null,
+          type: row[7] || "fourniture",
+        }));
+        return db.importArticles(rows);
+      }
     },
     onSuccess: (data) => {
       setImportResult(data);
       if (importType === "contacts") {
-        queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
+        queryClient.invalidateQueries({ queryKey: ["contacts"] });
       } else {
-        queryClient.invalidateQueries({ queryKey: ["/api/library"] });
+        queryClient.invalidateQueries({ queryKey: ["library-items"] });
       }
       toast({
         title: `Import terminé — ${data.imported} ${importType === "contacts" ? "contacts" : "articles"} importés`,

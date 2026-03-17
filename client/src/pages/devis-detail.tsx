@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient } from "@/lib/queryClient";
+import { db } from "@/lib/supabaseData";
 import { formatCurrency, formatDate, contactName } from "@/lib/format";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useToast } from "@/hooks/use-toast";
@@ -20,7 +21,6 @@ import {
   MessageCircle, ExternalLink, CheckCircle2, Wrench, Layers, Users, Truck,
   MoreHorizontal, BarChart3, AlertTriangle, Calendar,
 } from "lucide-react";
-import type { Quote, Contact, DocumentLine, CompanySettings } from "@shared/schema";
 
 // ─── Types ──────────────────────────────────────────────────────
 type LineType = "fourniture" | "main_oeuvre" | "ouvrage" | "sous_traitance" | "materiel" | "divers";
@@ -100,7 +100,7 @@ const TVA_RATES = [
 function DevisPDFPreview({
   quote, contact, company, lines, onClose, adjustments, headerFields, showMargins,
 }: {
-  quote: Quote; contact?: Contact; company?: CompanySettings;
+  quote: any; contact?: any; company?: any;
   lines: LineItem[]; onClose: () => void;
   adjustments: { remisePercent: string; remiseAmount: string; ajustementLabel: string; ajustementAmount: string };
   headerFields: { debutTravaux: string; dureeEstimee: string; visitePrealable: string };
@@ -220,23 +220,23 @@ function DevisPDFPreview({
               </div>
               <div className="company-info" style={{ fontSize: 10, color: "#555", lineHeight: 1.6 }}>
                 {company?.address && <div>{company.address}</div>}
-                {(company?.postalCode || company?.city) && <div>{[company.postalCode, company.city].filter(Boolean).join(" ")}</div>}
+                {(company?.postal_code || company?.city) && <div>{[company.postal_code, company.city].filter(Boolean).join(" ")}</div>}
                 {company?.phone && <div>Tél: {company.phone}</div>}
                 {company?.email && <div>{company.email}</div>}
                 {company?.siret && <div>SIRET: {company.siret}</div>}
-                {company?.tvaIntracom && <div>TVA: {company.tvaIntracom}</div>}
-                {company?.rcsNumber && <div>RCS: {company.rcsNumber}</div>}
-                {company?.assuranceDecennale && <div>Assurance décennale: {company.assuranceDecennale}</div>}
+                {company?.tva_intracom && <div>TVA: {company.tva_intracom}</div>}
+                {company?.rcs_number && <div>RCS: {company.rcs_number}</div>}
+                {company?.assurance_decennale && <div>Assurance décennale: {company.assurance_decennale}</div>}
               </div>
             </div>
             <div className="doc-title" style={{ textAlign: "right" }}>
               <h1 style={{ fontSize: 22, fontWeight: 700, color: "#C87941", marginBottom: 4 }}>DEVIS</h1>
               <div className="doc-meta" style={{ fontSize: 10, color: "#666", lineHeight: 1.8 }}>
                 <div>N° {quote.number}</div>
-                <div>Date: {formatDate(quote.createdAt ? new Date(quote.createdAt).toISOString() : null)}</div>
-                {quote.validUntil && (
+                <div>Date: {formatDate(quote.created_at ? new Date(quote.created_at).toISOString() : null)}</div>
+                {quote.valid_until && (
                   <div className="validity" style={{ display: "inline-block", padding: "4px 10px", background: "#FFF3E0", color: "#C87941", borderRadius: 4, fontSize: 10, fontWeight: 600, marginTop: 4 }}>
-                    Valide jusqu'au {formatDate(quote.validUntil)}
+                    Valide jusqu'au {formatDate(quote.valid_until)}
                   </div>
                 )}
               </div>
@@ -252,11 +252,11 @@ function DevisPDFPreview({
             <div className="party client-box" style={{ flex: 1, padding: 12, borderRadius: 6, background: "#f8f8f8", border: "1px solid #e0e0e0" }}>
               <div className="party-label" style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: 1, color: "#999", marginBottom: 6 }}>Client</div>
               <div className="party-name" style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>
-                {contact ? contactName(contact) : "—"}
+                {contact ? contactName({ firstName: contact.first_name, lastName: contact.last_name, company: contact.company } as any) : "—"}
               </div>
               {contact?.company && <div style={{ fontSize: 10.5 }}>{contact.company}</div>}
               {contact?.address && <div style={{ fontSize: 10.5, color: "#555" }}>{contact.address}</div>}
-              {(contact?.postalCode || contact?.city) && <div style={{ fontSize: 10.5, color: "#555" }}>{[contact.postalCode, contact.city].filter(Boolean).join(" ")}</div>}
+              {(contact?.postal_code || contact?.city) && <div style={{ fontSize: 10.5, color: "#555" }}>{[contact.postal_code, contact.city].filter(Boolean).join(" ")}</div>}
               {contact?.email && <div style={{ fontSize: 10.5, color: "#555" }}>{contact.email}</div>}
               {contact?.phone && <div style={{ fontSize: 10.5, color: "#555" }}>{contact.phone}</div>}
             </div>
@@ -469,10 +469,10 @@ function DevisPDFPreview({
 
           {/* Legal mentions */}
           <div style={{ marginTop: 20, fontSize: 8.5, color: "#999", borderTop: "1px solid #eee", paddingTop: 10, lineHeight: 1.6 }}>
-            {company?.assuranceDecennale && <div>Assurance décennale : {company.assuranceDecennale}</div>}
-            {company?.rcsNumber && <div>RCS : {company.rcsNumber}</div>}
+            {company?.assurance_decennale && <div>Assurance décennale : {company.assurance_decennale}</div>}
+            {company?.rcs_number && <div>RCS : {company.rcs_number}</div>}
             {company?.siret && <div>SIRET : {company.siret}</div>}
-            {company?.tvaIntracom && <div>TVA intracommunautaire : {company.tvaIntracom}</div>}
+            {company?.tva_intracom && <div>TVA intracommunautaire : {company.tva_intracom}</div>}
             <div style={{ marginTop: 4 }}>En cas d'acceptation, le client retourne le présent devis daté et signé avec la mention manuscrite « Bon pour accord ».</div>
           </div>
         </div>
@@ -492,7 +492,7 @@ function DevisPDFPreview({
 function SendEmailDialog({
   quote, contact, onClose, onSent,
 }: {
-  quote: Quote; contact?: Contact; onClose: () => void; onSent: () => void;
+  quote: any; contact?: any; onClose: () => void; onSent: () => void;
 }) {
   const { toast } = useToast();
   const [channel, setChannel] = useState<"email" | "gmail" | "whatsapp">("email");
@@ -500,43 +500,22 @@ function SendEmailDialog({
   const [phone, setPhone] = useState(contact?.phone || contact?.mobile || "");
   const [subject, setSubject] = useState(`Devis ${quote.number} — ${quote.title || ""}`);
   const [message, setMessage] = useState(
-    `Bonjour${contact ? ` ${contactName(contact)}` : ""},\n\nVeuillez trouver ci-joint notre devis n° ${quote.number}${quote.title ? ` pour ${quote.title}` : ""}.\n\nCe devis est valable ${quote.validUntil ? `jusqu'au ${formatDate(quote.validUntil)}` : "30 jours"}.\n\nN'hésitez pas à nous contacter pour toute question.\n\nCordialement,`
+    `Bonjour${contact ? ` ${contactName({ firstName: contact.first_name, lastName: contact.last_name, company: contact.company } as any)}` : ""},\n\nVeuillez trouver ci-joint notre devis n° ${quote.number}${quote.title ? ` pour ${quote.title}` : ""}.\n\nCe devis est valable ${quote.valid_until ? `jusqu'au ${formatDate(quote.valid_until)}` : "30 jours"}.\n\nN'hésitez pas à nous contacter pour toute question.\n\nCordialement,`
   );
   const [waMessage, setWaMessage] = useState(
-    `Bonjour${contact ? ` ${contactName(contact)}` : ""}, voici le devis n° ${quote.number}${quote.title ? ` pour ${quote.title}` : ""} d'un montant de ${formatCurrency(parseFloat(quote.amountTTC || "0"))}. N'hésitez pas à me contacter pour toute question.`
+    `Bonjour${contact ? ` ${contactName({ firstName: contact.first_name, lastName: contact.last_name, company: contact.company } as any)}` : ""}, voici le devis n° ${quote.number}${quote.title ? ` pour ${quote.title}` : ""} d'un montant de ${formatCurrency(parseFloat(quote.amount_ttc || "0"))}. N'hésitez pas à me contacter pour toute question.`
   );
 
-  // Check integration status
-  const { data: gmailStatus } = useQuery<any>({ queryKey: ["/api/integrations/gmail"] });
-  const { data: whatsappStatus } = useQuery<any>({ queryKey: ["/api/integrations/whatsapp"] });
-  const gmailConnected = gmailStatus?.status === "connected";
-  const waConnected = whatsappStatus?.status === "connected";
+  // Integration status — stubbed (no server)
+  const gmailConnected = false;
+  const waConnected = false;
 
   const sendMut = useMutation({
     mutationFn: async () => {
-      if (channel === "gmail") {
-        return apiRequest("POST", `/api/quotes/${quote.id}/send`, { channel: "gmail", email, subject, message });
-      } else if (channel === "whatsapp") {
-        return apiRequest("POST", `/api/quotes/${quote.id}/send`, { channel: "whatsapp", phone, message: waMessage });
-      } else {
-        return apiRequest("POST", `/api/quotes/${quote.id}/send-email`, { email, subject, message });
-      }
+      // Stubbed — email/gmail/whatsapp sending not available without server
+      toast({ title: "Fonctionnalité bientôt disponible", description: "L'envoi de devis sera disponible prochainement." });
     },
-    onSuccess: async (res) => {
-      const data = await res.json();
-      queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/quotes", quote.id] });
-
-      if (data.waLink) {
-        // Open WhatsApp link in new window
-        window.open(data.waLink, '_blank');
-        toast({ title: "Lien WhatsApp ouvert", description: "Envoyez le message dans WhatsApp." });
-      } else {
-        toast({
-          title: "Devis envoyé",
-          description: data.message || `Le devis a été envoyé`,
-        });
-      }
+    onSuccess: () => {
       onSent();
     },
     onError: (err: any) => {
@@ -626,10 +605,7 @@ function SendEmailDialog({
               </div>
               <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-3 text-xs text-muted-foreground">
                 <MessageCircle className="size-3.5 inline mr-1.5 text-emerald-400" />
-                {whatsappStatus?.whatsappApiKey
-                  ? "Le message sera envoyé automatiquement via l'API WhatsApp Business."
-                  : "Un lien WhatsApp sera ouvert pour envoyer le message manuellement."
-                }
+                Un lien WhatsApp sera ouvert pour envoyer le message manuellement.
               </div>
             </>
           ) : (
@@ -653,12 +629,12 @@ function SendEmailDialog({
               {channel === "gmail" && (
                 <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-3 text-xs text-muted-foreground">
                   <Mail className="size-3.5 inline mr-1.5 text-red-400" />
-                  L'email sera envoyé depuis {gmailStatus?.gmailEmail || "votre compte Gmail"}. Le devis sera inclus en HTML.
+                  Gmail non connecté. Configurez l'intégration dans les paramètres.
                 </div>
               )}
               {channel === "email" && (
                 <div className="bg-muted/30 rounded-lg p-3 text-xs text-muted-foreground">
-                  Le devis sera joint en PDF automatiquement.
+                  Fonctionnalité email bientôt disponible.
                 </div>
               )}
             </>
@@ -708,22 +684,29 @@ export default function DevisDetailPage() {
     remisePercent: "", remiseAmount: "", ajustementLabel: "", ajustementAmount: "",
   });
 
-  // Queries
-  const { data: quote, isLoading } = useQuery<Quote>({ queryKey: ["/api/quotes", quoteId] });
-  const { data: existingLines = [] } = useQuery<DocumentLine[]>({
-    queryKey: ["/api/document-lines", "quote", quoteId],
-    queryFn: async () => {
-      const res = await apiRequest("GET", `/api/document-lines/quote/${quoteId}`);
-      return res.json();
-    },
+  // Queries — Supabase direct
+  const { data: quote, isLoading } = useQuery<any>({
+    queryKey: ["quotes", quoteId],
+    queryFn: () => db.getQuote(quoteId),
   });
-  const { data: contacts = [] } = useQuery<Contact[]>({ queryKey: ["/api/contacts"] });
-  const { data: company } = useQuery<CompanySettings>({ queryKey: ["/api/company"] });
-  const { data: templates = [] } = useQuery<any[]>({ queryKey: ["/api/quote-templates"] });
+  const { data: existingLines = [] } = useQuery<any[]>({
+    queryKey: ["document-lines", "quote", quoteId],
+    queryFn: () => db.getDocumentLines("quote", quoteId),
+  });
+  const { data: contacts = [] } = useQuery<any[]>({
+    queryKey: ["contacts"],
+    queryFn: () => db.getContacts(),
+  });
+  const { data: company } = useQuery<any>({
+    queryKey: ["company"],
+    queryFn: () => db.getCompanySettings(),
+  });
+  // Templates — static, empty (templates served from modeles-devis page)
+  const templates: any[] = [];
 
-  const contactMap = new Map(contacts.map(c => [c.id, c]));
-  const contact = quote ? contactMap.get(quote.contactId) : undefined;
-  const clients = contacts.filter(c => c.type === "client");
+  const contactMap = new Map((contacts as any[]).map((c: any) => [c.id, c]));
+  const contact = quote ? contactMap.get(quote.contact_id) : undefined;
+  const clients = (contacts as any[]).filter((c: any) => c.type === "client");
 
   // Initialize form from loaded quote
   useEffect(() => {
@@ -731,11 +714,11 @@ export default function DevisDetailPage() {
       setQuoteForm({
         title: quote.title || "",
         description: quote.description || "",
-        validUntil: quote.validUntil || "",
+        validUntil: quote.valid_until || "",
         notes: quote.notes || "",
         conditions: quote.conditions || "Validité 30 jours. Acompte 30% à la commande.",
-        contactId: String(quote.contactId),
-        discountPercent: quote.discountPercent || "",
+        contactId: String(quote.contact_id || ""),
+        discountPercent: quote.discount_percent || "",
       });
     }
   }, [quote]);
@@ -743,23 +726,22 @@ export default function DevisDetailPage() {
   // Initialize lines from loaded data
   useEffect(() => {
     if (existingLines.length > 0) {
-      setLines(existingLines.map(l => ({
+      setLines(existingLines.map((l: any) => ({
         id: l.id,
         designation: l.designation || "",
         description: l.description || "",
         quantity: String(l.quantity || "1"),
         unit: l.unit || "u",
-        unitPriceHT: String(l.unitPriceHT || "0"),
-        tvaRate: String(l.tvaRate || "20"),
-        isTitle: l.isTitle || false,
-        isSubtotal: l.isSubtotal || false,
-        lineType: (l.lineType as LineType) || "fourniture",
-        purchasePriceHT: String(l.purchasePriceHT || ""),
+        unitPriceHT: String(l.unit_price_ht || "0"),
+        tvaRate: String(l.tva_rate || "20"),
+        isTitle: l.is_title || false,
+        isSubtotal: l.is_subtotal || false,
+        lineType: (l.line_type as LineType) || "fourniture",
+        purchasePriceHT: String(l.purchase_price_ht || ""),
         coefficient: String(l.coefficient || ""),
-        marginPercent: String(l.marginPercent || ""),
+        marginPercent: String(l.margin_percent || ""),
       })));
     } else if (existingLines.length === 0 && quote && !isLoading) {
-      // No lines yet — add one empty line
       setLines([{ ...EMPTY_LINE }]);
     }
   }, [existingLines, quote, isLoading]);
@@ -833,7 +815,6 @@ export default function DevisDetailPage() {
       marginPercent: l.marginPercent || "",
     }));
     setLines(prev => {
-      // If only empty lines, replace; otherwise append
       const nonEmpty = prev.filter(l => l.designation.trim() !== "");
       if (nonEmpty.length === 0) return newLines;
       return [...prev, { ...EMPTY_LINE, isTitle: true, designation: template.name }, ...newLines];
@@ -873,30 +854,41 @@ export default function DevisDetailPage() {
   const saveMut = useMutation({
     mutationFn: async () => {
       // Update quote metadata
-      await apiRequest("PATCH", `/api/quotes/${quoteId}`, {
+      await db.updateQuote(quoteId, {
         title: quoteForm.title,
         description: quoteForm.description,
-        validUntil: quoteForm.validUntil || null,
+        valid_until: quoteForm.validUntil || null,
         notes: quoteForm.notes || null,
         conditions: quoteForm.conditions || null,
-        contactId: Number(quoteForm.contactId) || quote?.contactId,
-        discountPercent: quoteForm.discountPercent || null,
+        contact_id: Number(quoteForm.contactId) || quote?.contact_id,
+        discount_percent: quoteForm.discountPercent || null,
+        amount_ht: finalHT.toFixed(2),
+        amount_tva: finalTVA.toFixed(2),
+        amount_ttc: totalTTC.toFixed(2),
       });
-      // Save lines (PUT replaces all + recalculates totals)
-      await apiRequest("PUT", `/api/quotes/${quoteId}/lines`, {
-        lines: lines.filter(l => l.designation.trim() !== "" || l.isTitle || l.isSubtotal).map(l => ({
-          ...l,
-          lineType: l.lineType || null,
-          purchasePriceHT: l.purchasePriceHT || null,
+      // Save lines via bulk operation
+      const cleanLines = lines
+        .filter(l => l.designation.trim() !== "" || l.isTitle || l.isSubtotal)
+        .map(l => ({
+          designation: l.designation,
+          description: l.description || null,
+          quantity: l.quantity || "1",
+          unit: l.unit || "u",
+          unit_price_ht: l.unitPriceHT || "0",
+          tva_rate: l.tvaRate || "20",
+          is_title: l.isTitle || false,
+          is_subtotal: l.isSubtotal || false,
+          line_type: l.lineType || null,
+          purchase_price_ht: l.purchasePriceHT || null,
           coefficient: l.coefficient || null,
-          marginPercent: l.marginPercent || null,
-        })),
-      });
+          margin_percent: l.marginPercent || null,
+        }));
+      await db.bulkSaveDocumentLines("quote", quoteId, cleanLines);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/quotes", quoteId] });
-      queryClient.invalidateQueries({ queryKey: ["/api/document-lines", "quote", quoteId] });
+      queryClient.invalidateQueries({ queryKey: ["quotes"] });
+      queryClient.invalidateQueries({ queryKey: ["quotes", quoteId] });
+      queryClient.invalidateQueries({ queryKey: ["document-lines", "quote", quoteId] });
       toast({ title: "Devis enregistré", description: "Toutes les modifications ont été sauvegardées." });
     },
     onError: (err: any) => {
@@ -906,9 +898,9 @@ export default function DevisDetailPage() {
 
   // Delete
   const deleteMut = useMutation({
-    mutationFn: async () => apiRequest("DELETE", `/api/quotes/${quoteId}`),
+    mutationFn: async () => db.deleteQuote(quoteId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
+      queryClient.invalidateQueries({ queryKey: ["quotes"] });
       toast({ title: "Devis supprimé" });
       setLocation("/devis");
     },
@@ -917,16 +909,12 @@ export default function DevisDetailPage() {
   // Facturer (create invoice from quote)
   const facturerMut = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/invoices/from-quote", {
-        quoteId,
-        type: facturerType,
-        percent: facturerType === "facture" ? "100" : facturerPercent,
-        situationNumber: facturerType === "situation" ? Number(facturerSituation) : null,
-      });
-      return res.json();
+      return db.createInvoiceFromQuote(quoteId);
     },
     onSuccess: (invoice: any) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["quotes"] });
+      queryClient.invalidateQueries({ queryKey: ["quotes", quoteId] });
       setShowFacturer(false);
       toast({ title: "Facture créée", description: `${invoice.number} — ${invoice.title}` });
       setLocation("/factures");
@@ -967,31 +955,13 @@ export default function DevisDetailPage() {
           <Button variant="ghost" size="sm" className="gap-2 h-8 text-xs" onClick={() => setLocation("/devis")} data-testid="btn-back">
             <ArrowLeft className="size-3.5" /> Retour
           </Button>
-          <Button variant="outline" size="sm" className="gap-2 h-8 text-xs" onClick={async () => {
-            try {
-              const res = await apiRequest("GET", `/api/quotes/${quoteId}/pdf`);
-              const blob = await res.blob();
-              const url = URL.createObjectURL(blob);
-              window.open(url, "_blank");
-            } catch (err: any) {
-              toast({ title: "Erreur PDF", description: err.message, variant: "destructive" });
-            }
+          <Button variant="outline" size="sm" className="gap-2 h-8 text-xs" onClick={() => {
+            setShowPdf(true);
           }} data-testid="btn-preview-pdf">
             <Eye className="size-3.5" /> Aperçu PDF
           </Button>
-          <Button variant="outline" size="sm" className="gap-2 h-8 text-xs" onClick={async () => {
-            try {
-              const res = await apiRequest("GET", `/api/quotes/${quoteId}/pdf`);
-              const blob = await res.blob();
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url;
-              a.download = `Devis-${quote.number}.pdf`;
-              a.click();
-              URL.revokeObjectURL(url);
-            } catch (err: any) {
-              toast({ title: "Erreur PDF", description: err.message, variant: "destructive" });
-            }
+          <Button variant="outline" size="sm" className="gap-2 h-8 text-xs" onClick={() => {
+            toast({ title: "Téléchargement PDF", description: "Téléchargement PDF bientôt disponible." });
           }} data-testid="btn-download-pdf">
             <Download className="size-3.5" /> Télécharger
           </Button>
@@ -1013,9 +983,9 @@ export default function DevisDetailPage() {
       {company && (() => {
         const missing: string[] = [];
         if (!company.siret) missing.push("SIRET");
-        if (!company.assuranceDecennale) missing.push("Assurance décennale");
-        if (!company.tvaIntracom) missing.push("TVA intracommunautaire");
-        if (!company.rcsNumber) missing.push("RCS");
+        if (!company.assurance_decennale) missing.push("Assurance décennale");
+        if (!company.tva_intracom) missing.push("TVA intracommunautaire");
+        if (!company.rcs_number) missing.push("RCS");
         return missing.length > 0 ? (
           <div className="mb-4 flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-2.5 text-xs text-amber-400">
             <AlertTriangle className="size-4 shrink-0" />
@@ -1044,9 +1014,9 @@ export default function DevisDetailPage() {
                       <SelectValue placeholder="Sélectionner un client" />
                     </SelectTrigger>
                     <SelectContent>
-                      {clients.map(c => (
+                      {clients.map((c: any) => (
                         <SelectItem key={c.id} value={String(c.id)}>
-                          {contactName(c)}{c.company ? ` — ${c.company}` : ""}
+                          {contactName({ firstName: c.first_name, lastName: c.last_name, company: c.company } as any)}{c.company ? ` — ${c.company}` : ""}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -1292,7 +1262,6 @@ export default function DevisDetailPage() {
                       <Calculator className="size-4 text-muted-foreground shrink-0" />
                       <span className="text-sm font-medium text-muted-foreground flex-1">
                         {(() => {
-                          // Find section name above
                           for (let j = idx - 1; j >= 0; j--) {
                             if (lines[j].isTitle) return `Sous-total ${lines[j].designation}`;
                             if (lines[j].isSubtotal) break;
@@ -1335,7 +1304,6 @@ export default function DevisDetailPage() {
                               placeholder="Désignation de la prestation"
                               data-testid={`line-designation-${idx}`}
                             />
-                            {/* Line type badge */}
                             {(() => {
                               const lt = LINE_TYPE_MAP[line.lineType];
                               if (!lt) return null;
@@ -1538,7 +1506,19 @@ export default function DevisDetailPage() {
         </div>
       </div>
 
-      {/* PDF Preview — now opens real PDF in new tab via button handler */}
+      {/* PDF Preview */}
+      {showPdf && (
+        <DevisPDFPreview
+          quote={quote}
+          contact={contact}
+          company={company}
+          lines={lines}
+          onClose={() => setShowPdf(false)}
+          adjustments={adjustments}
+          headerFields={headerFields}
+          showMargins={showMargins}
+        />
+      )}
 
       {/* Email Dialog */}
       {showEmail && (
@@ -1548,7 +1528,7 @@ export default function DevisDetailPage() {
           onClose={() => setShowEmail(false)}
           onSent={() => {
             setShowEmail(false);
-            queryClient.invalidateQueries({ queryKey: ["/api/quotes", quoteId] });
+            queryClient.invalidateQueries({ queryKey: ["quotes", quoteId] });
           }}
         />
       )}
@@ -1563,7 +1543,7 @@ export default function DevisDetailPage() {
           </DialogHeader>
           <div className="space-y-4">
             <div className="text-sm text-muted-foreground">
-              Montant du devis : <span className="font-bold text-foreground">{formatCurrency(quote.amountTTC)} TTC</span>
+              Montant du devis : <span className="font-bold text-foreground">{formatCurrency(parseFloat(quote.amount_ttc || "0"))} TTC</span>
             </div>
 
             {/* Type selection */}
@@ -1616,7 +1596,7 @@ export default function DevisDetailPage() {
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Montant facturé :</span>
                     <span className="font-bold">
-                      {formatCurrency(parseFloat(quote.amountTTC || "0") * (parseFloat(facturerPercent || "0") / 100))} TTC
+                      {formatCurrency(parseFloat(quote.amount_ttc || "0") * (parseFloat(facturerPercent || "0") / 100))} TTC
                     </span>
                   </div>
                 </div>

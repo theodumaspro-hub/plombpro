@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient } from "@/lib/queryClient";
+import { db } from "@/lib/supabaseData";
 import { formatDate } from "@/lib/format";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Clock, Download, Check, X, Filter } from "lucide-react";
@@ -37,9 +38,9 @@ export default function SuiviTempsPage() {
   const [filterDateTo, setFilterDateTo] = useState("");
   const { toast } = useToast();
 
-  const { data: entries = [] } = useQuery<TimeEntry[]>({ queryKey: ["/api/time-entries"] });
-  const { data: resources = [] } = useQuery<Resource[]>({ queryKey: ["/api/resources"] });
-  const { data: chantiers = [] } = useQuery<Chantier[]>({ queryKey: ["/api/chantiers"] });
+  const { data: entries = [] } = useQuery<any[]>({ queryKey: ["time-entries"], queryFn: () => db.getTimeEntries() });
+  const { data: resources = [] } = useQuery<any[]>({ queryKey: ["resources"], queryFn: () => db.getResources() });
+  const { data: chantiers = [] } = useQuery<any[]>({ queryKey: ["chantiers"], queryFn: () => db.getChantiers() });
   const resourceMap = new Map(resources.map(r => [r.id, r]));
   const chantierMap = new Map(chantiers.map(c => [c.id, c]));
   const people = resources.filter(r => r.type !== "materiel");
@@ -50,9 +51,9 @@ export default function SuiviTempsPage() {
   });
 
   const createMut = useMutation({
-    mutationFn: async (data: any) => apiRequest("POST", "/api/time-entries", data),
+    mutationFn: async (data: any) => db.createTimeEntry(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["time-entries"] });
       setOpen(false);
       toast({ title: "Saisie enregistrée" });
       setForm({ resourceId: "", chantierId: "", date: "", startTime: "08:00", endTime: "17:00", type: "intervention", description: "", billable: true });
@@ -61,9 +62,9 @@ export default function SuiviTempsPage() {
 
   const validateMut = useMutation({
     mutationFn: async ({ id, validated }: { id: number; validated: boolean }) =>
-      apiRequest("PATCH", `/api/time-entries/${id}`, { validated }),
+      db.updateTimeEntry(id, { validated }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["time-entries"] });
       toast({ title: "Statut mis à jour" });
     },
   });
@@ -72,12 +73,12 @@ export default function SuiviTempsPage() {
     e.preventDefault();
     const dur = calcDuration(form.startTime, form.endTime);
     createMut.mutate({
-      resourceId: Number(form.resourceId),
-      chantierId: form.chantierId ? Number(form.chantierId) : null,
-      appointmentId: null,
+      resource_id: Number(form.resourceId),
+      chantier_id: form.chantierId ? Number(form.chantierId) : null,
+      appointment_id: null,
       date: form.date,
-      startTime: form.startTime,
-      endTime: form.endTime,
+      start_time: form.startTime,
+      end_time: form.endTime,
       duration: String(dur.toFixed(2)),
       type: form.type,
       description: form.description || null,
@@ -88,12 +89,12 @@ export default function SuiviTempsPage() {
 
   // Filtering
   const filtered = entries.filter(e => {
-    if (filterResource !== "all" && String(e.resourceId) !== filterResource) return false;
+    if (filterResource !== "all" && String(e.resource_id) !== filterResource) return false;
     if (filterType !== "all" && e.type !== filterType) return false;
     if (filterDateFrom && e.date < filterDateFrom) return false;
     if (filterDateTo && e.date > filterDateTo) return false;
     return true;
-  }).sort((a, b) => b.date.localeCompare(a.date) || b.startTime.localeCompare(a.startTime));
+  }).sort((a, b) => b.date.localeCompare(a.date) || b.start_time.localeCompare(a.start_time));
 
   // Summary stats
   const now = new Date();
@@ -214,8 +215,8 @@ export default function SuiviTempsPage() {
             </thead>
             <tbody>
               {filtered.map(entry => {
-                const r = resourceMap.get(entry.resourceId);
-                const ch = entry.chantierId ? chantierMap.get(entry.chantierId) : null;
+                const r = resourceMap.get(entry.resource_id);
+                const ch = entry.chantier_id ? chantierMap.get(entry.chantier_id) : null;
                 return (
                   <tr key={entry.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors" data-testid={`time-entry-row-${entry.id}`}>
                     <td className="py-2.5 px-4 text-xs">{formatDate(entry.date)}</td>
@@ -230,7 +231,7 @@ export default function SuiviTempsPage() {
                       ) : <span className="text-muted-foreground">—</span>}
                     </td>
                     <td className="py-2.5 px-4 text-xs text-muted-foreground">{ch ? ch.reference : "—"}</td>
-                    <td className="py-2.5 px-4 text-xs tabular-nums lining-nums">{entry.startTime} — {entry.endTime}</td>
+                    <td className="py-2.5 px-4 text-xs tabular-nums lining-nums">{entry.start_time} — {entry.end_time}</td>
                     <td className="py-2.5 px-4 text-right font-medium text-xs tabular-nums lining-nums">{parseFloat(entry.duration || "0").toFixed(1)} h</td>
                     <td className="py-2.5 px-4">
                       <Badge variant="outline" className="text-[10px] border-0 bg-muted text-muted-foreground">

@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient } from "@/lib/queryClient";
+import { db } from "@/lib/supabaseData";
 import { formatCurrency, formatDate, contactName, invoiceTypeLabel } from "@/lib/format";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useToast } from "@/hooks/use-toast";
@@ -33,17 +34,17 @@ export default function FacturesPage() {
   const [tab, setTab] = useState("all");
   const { toast } = useToast();
 
-  const { data: invoices = [] } = useQuery<Invoice[]>({ queryKey: ["/api/invoices"] });
-  const { data: contacts = [] } = useQuery<Contact[]>({ queryKey: ["/api/contacts"] });
+  const { data: invoices = [] } = useQuery<any[]>({ queryKey: ["invoices"], queryFn: () => db.getInvoices() });
+  const { data: contacts = [] } = useQuery<any[]>({ queryKey: ["contacts"], queryFn: () => db.getContacts() });
   const contactMap = new Map(contacts.map(c => [c.id, c]));
   const clients = contacts.filter(c => c.type === "client");
 
-  const { data: paymentLinks = [] } = useQuery<PaymentLink[]>({ queryKey: ["/api/payment-links"] });
-  const paymentLinksByInvoice = new Map<number, PaymentLink[]>();
+  const { data: paymentLinks = [] } = useQuery<any[]>({ queryKey: ["payment-links"], queryFn: () => db.getPaymentLinks() });
+  const paymentLinksByInvoice = new Map<number, any[]>();
   paymentLinks.forEach(pl => {
-    const existing = paymentLinksByInvoice.get(pl.invoiceId) || [];
+    const existing = paymentLinksByInvoice.get(pl.invoice_id) || [];
     existing.push(pl);
-    paymentLinksByInvoice.set(pl.invoiceId, existing);
+    paymentLinksByInvoice.set(pl.invoice_id, existing);
   });
 
   // Payment link dialog
@@ -55,14 +56,14 @@ export default function FacturesPage() {
 
   // Avoir dialog
   const [avoirOpen, setAvoirOpen] = useState(false);
-  const [avoirInvoice, setAvoirInvoice] = useState<Invoice | null>(null);
+  const [avoirInvoice, setAvoirInvoice] = useState<any | null>(null);
   const [avoirMode, setAvoirMode] = useState<"total" | "partial">("total");
   const [avoirAmount, setAvoirAmount] = useState("");
   const [avoirReason, setAvoirReason] = useState("");
 
   // Payment tracking dialog (Règlements)
   const [paymentOpen, setPaymentOpen] = useState(false);
-  const [paymentInvoice, setPaymentInvoice] = useState<Invoice | null>(null);
+  const [paymentInvoice, setPaymentInvoice] = useState<any | null>(null);
   const [paymentForm, setPaymentForm] = useState({
     amount: "", date: new Date().toISOString().split("T")[0], method: "virement", reference: "",
   });
@@ -70,15 +71,14 @@ export default function FacturesPage() {
 
   // Send invoice dialog
   const [sendOpen, setSendOpen] = useState(false);
-  const [sendInvoice, setSendInvoice] = useState<Invoice | null>(null);
+  const [sendInvoice, setSendInvoice] = useState<any | null>(null);
   const [sendForm, setSendForm] = useState({ email: "", subject: "", message: "" });
 
   const createPayLinkMut = useMutation({
-    mutationFn: async (data: any) => apiRequest("POST", "/api/payment-links", data),
-    onSuccess: async (res) => {
-      const link = await res.json();
-      queryClient.invalidateQueries({ queryKey: ["/api/payment-links"] });
-      setCreatedLink(link.linkUrl || `https://pay.plombpro.fr/${link.id}`);
+    mutationFn: async (data: any) => db.createPaymentLink(data),
+    onSuccess: async (link: any) => {
+      queryClient.invalidateQueries({ queryKey: ["payment-links"] });
+      setCreatedLink(link.link_url || `https://pay.plombpro.fr/${link.id}`);
       toast({ title: "Lien de paiement créé" });
     },
   });
@@ -87,13 +87,13 @@ export default function FacturesPage() {
     e.preventDefault();
     const inv = invoices.find(i => i.id === Number(payLinkForm.invoiceId));
     createPayLinkMut.mutate({
-      invoiceId: Number(payLinkForm.invoiceId),
-      contactId: inv?.contactId || null,
+      invoice_id: Number(payLinkForm.invoiceId),
+      contact_id: inv?.contact_id || null,
       amount: payLinkForm.amount,
-      paymentMethod: payLinkForm.paymentMethod,
+      payment_method: payLinkForm.paymentMethod,
       status: "active",
-      expiresAt: payLinkForm.expiresAt || null,
-      linkUrl: `https://pay.plombpro.fr/lnk-${Date.now()}`,
+      expires_at: payLinkForm.expiresAt || null,
+      link_url: `https://pay.plombpro.fr/lnk-${Date.now()}`,
     });
   }
 
@@ -112,9 +112,9 @@ export default function FacturesPage() {
   });
 
   const createMut = useMutation({
-    mutationFn: async (data: any) => apiRequest("POST", "/api/invoices", data),
+    mutationFn: async (data: any) => db.createInvoice(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["invoices"] });
       setOpen(false);
       toast({ title: "Facture créée" });
       setForm({ contactId: "", type: "facture", title: "", amountHT: "", tvaRate: "20", dueDate: "", paymentMethod: "", notes: "", retenueGarantiePercent: "", primeEnergieAmount: "", primeEnergieType: "" });
@@ -122,9 +122,9 @@ export default function FacturesPage() {
   });
 
   const updateMut = useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: any }) => apiRequest("PATCH", `/api/invoices/${id}`, data),
+    mutationFn: async ({ id, data }: { id: number; data: any }) => db.updateInvoice(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["invoices"] });
       toast({ title: "Facture mise à jour" });
     },
   });
@@ -133,14 +133,28 @@ export default function FacturesPage() {
   const avoirMut = useMutation({
     mutationFn: async () => {
       if (!avoirInvoice) throw new Error("Facture manquante");
-      return apiRequest("POST", `/api/invoices/${avoirInvoice.id}/avoir`, {
-        mode: avoirMode,
-        amount: avoirMode === "partial" ? avoirAmount : null,
-        reason: avoirReason || null,
+      // Create an avoir invoice directly via Supabase
+      const originalTTC = Math.abs(parseFloat(avoirInvoice.amount_ttc || "0"));
+      const avoirTTC = avoirMode === "partial" && avoirAmount ? parseFloat(avoirAmount) : originalTTC;
+      const ratio = originalTTC > 0 ? avoirTTC / originalTTC : 1;
+      const originalHT = Math.abs(parseFloat(avoirInvoice.amount_ht || "0"));
+      const originalTVA = Math.abs(parseFloat(avoirInvoice.amount_tva || "0"));
+      return db.createInvoice({
+        contact_id: avoirInvoice.contact_id,
+        chantier_id: avoirInvoice.chantier_id || null,
+        quote_id: avoirInvoice.quote_id || null,
+        number: `AV-${Date.now().toString(36).toUpperCase()}`,
+        type: "avoir",
+        status: "brouillon",
+        title: `Avoir sur ${avoirInvoice.number}${avoirReason ? ` — ${avoirReason}` : ""}`,
+        amount_ht: String(-(originalHT * ratio).toFixed(2)),
+        amount_tva: String(-(originalTVA * ratio).toFixed(2)),
+        amount_ttc: String(-avoirTTC.toFixed(2)),
+        notes: avoirReason || null,
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["invoices"] });
       setAvoirOpen(false);
       toast({ title: "Avoir créé" });
     },
@@ -153,16 +167,20 @@ export default function FacturesPage() {
   const addPaymentMut = useMutation({
     mutationFn: async () => {
       if (!paymentInvoice) throw new Error("Facture manquante");
-      return apiRequest("POST", `/api/invoices/${paymentInvoice.id}/payments`, paymentForm);
+      const newPaid = parseFloat(paymentInvoice.amount_paid || "0") + parseFloat(paymentForm.amount || "0");
+      const ttc = parseFloat(paymentInvoice.amount_ttc || "0");
+      const newStatus = newPaid >= ttc ? "payée" : "partiellement_payée";
+      return db.updateInvoice(paymentInvoice.id, {
+        amount_paid: String(newPaid.toFixed(2)),
+        status: newStatus,
+        payment_method: paymentForm.method,
+        payment_date: paymentForm.date,
+      });
     },
     onSuccess: async () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
-      // Reload payments
-      if (paymentInvoice) {
-        const res = await apiRequest("GET", `/api/invoices/${paymentInvoice.id}/payments`);
-        const data = await res.json();
-        setPayments(Array.isArray(data) ? data : []);
-      }
+      queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      // Update local payment tracking
+      setPayments(prev => [...prev, { ...paymentForm, id: Date.now() }]);
       setPaymentForm(f => ({ ...f, amount: "", reference: "" }));
       toast({ title: "Règlement enregistré" });
     },
@@ -175,59 +193,40 @@ export default function FacturesPage() {
   const sendInvoiceMut = useMutation({
     mutationFn: async () => {
       if (!sendInvoice) throw new Error("Facture manquante");
-      return apiRequest("POST", `/api/invoices/${sendInvoice.id}/send`, sendForm);
+      // Email sending is not available yet — stub with status update
+      await db.updateInvoice(sendInvoice.id, { status: "envoyée" });
     },
-    onSuccess: async (res) => {
-      const data = await res.json();
-      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+    onSuccess: async () => {
+      queryClient.invalidateQueries({ queryKey: ["invoices"] });
       setSendOpen(false);
-      toast({ title: "Facture envoyée", description: data.message });
+      toast({ title: "Fonctionnalité email bientôt disponible", description: "La facture a été marquée comme envoyée." });
     },
     onError: (err: any) => {
       toast({ title: "Erreur", description: err.message, variant: "destructive" });
     },
   });
 
-  function openSendDialog(inv: Invoice) {
-    const c = contactMap.get(inv.contactId);
+  function openSendDialog(inv: any) {
+    const c = contactMap.get(inv.contact_id);
     const docLabel = inv.type === "avoir" ? "Avoir" : "Facture";
     setSendInvoice(inv);
     setSendForm({
       email: c?.email || "",
       subject: `${docLabel} ${inv.number}${inv.title ? ` — ${inv.title}` : ""}`,
-      message: `Bonjour${c ? ` ${contactName(c)}` : ""},\n\nVeuillez trouver ci-joint la ${docLabel.toLowerCase()} n° ${inv.number}${inv.title ? ` pour ${inv.title}` : ""}.\n\nN'hésitez pas à nous contacter pour toute question.\n\nCordialement,`,
+      message: `Bonjour${c ? ` ${contactName({ firstName: c.first_name, lastName: c.last_name, company: c.company } as any)}` : ""},\n\nVeuillez trouver ci-joint la ${docLabel.toLowerCase()} n° ${inv.number}${inv.title ? ` pour ${inv.title}` : ""}.\n\nN'hésitez pas à nous contacter pour toute question.\n\nCordialement,`,
     });
     setSendOpen(true);
   }
 
-  async function handleDownloadPDF(inv: Invoice) {
-    try {
-      const res = await apiRequest("GET", `/api/invoices/${inv.id}/pdf`);
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      const prefix = inv.type === "avoir" ? "Avoir" : "Facture";
-      a.download = `${prefix}-${inv.number}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (err: any) {
-      toast({ title: "Erreur PDF", description: err.message, variant: "destructive" });
-    }
+  async function handleDownloadPDF(inv: any) {
+    toast({ title: "Génération PDF bientôt disponible" });
   }
 
-  async function handlePreviewPDF(inv: Invoice) {
-    try {
-      const res = await apiRequest("GET", `/api/invoices/${inv.id}/pdf`);
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      window.open(url, "_blank");
-    } catch (err: any) {
-      toast({ title: "Erreur PDF", description: err.message, variant: "destructive" });
-    }
+  async function handlePreviewPDF(inv: any) {
+    toast({ title: "Génération PDF bientôt disponible" });
   }
 
-  function openAvoirDialog(inv: Invoice) {
+  function openAvoirDialog(inv: any) {
     setAvoirInvoice(inv);
     setAvoirMode("total");
     setAvoirAmount("");
@@ -235,15 +234,11 @@ export default function FacturesPage() {
     setAvoirOpen(true);
   }
 
-  async function openPaymentDialog(inv: Invoice) {
+  async function openPaymentDialog(inv: any) {
     setPaymentInvoice(inv);
-    const remaining = parseFloat(inv.amountTTC || "0") - parseFloat(inv.amountPaid || "0");
+    const remaining = parseFloat(inv.amount_ttc || "0") - parseFloat(inv.amount_paid || "0");
     setPaymentForm({ amount: remaining > 0 ? remaining.toFixed(2) : "", date: new Date().toISOString().split("T")[0], method: "virement", reference: "" });
-    try {
-      const res = await apiRequest("GET", `/api/invoices/${inv.id}/payments`);
-      const data = await res.json();
-      setPayments(Array.isArray(data) ? data : []);
-    } catch { setPayments([]); }
+    setPayments([]);
     setPaymentOpen(true);
   }
 
@@ -256,22 +251,22 @@ export default function FacturesPage() {
     const num = `${prefix}-2026-${String(invoices.length + 1).padStart(3, "0")}`;
     const retPct = parseFloat(form.retenueGarantiePercent) || 0;
     createMut.mutate({
-      contactId: Number(form.contactId),
+      contact_id: Number(form.contactId),
       number: num,
       type: form.type,
       status: "brouillon",
       title: form.title,
-      amountHT: String(form.type === "avoir" ? -Math.abs(ht) : ht),
-      amountTVA: String(form.type === "avoir" ? -Math.abs(tva).toFixed(2) : tva.toFixed(2)),
-      amountTTC: String(form.type === "avoir" ? -Math.abs(ttc).toFixed(2) : ttc.toFixed(2)),
-      amountPaid: "0",
-      dueDate: form.dueDate || null,
-      paymentMethod: form.paymentMethod || null,
+      amount_ht: String(form.type === "avoir" ? -Math.abs(ht) : ht),
+      amount_tva: String(form.type === "avoir" ? -Math.abs(tva).toFixed(2) : tva.toFixed(2)),
+      amount_ttc: String(form.type === "avoir" ? -Math.abs(ttc).toFixed(2) : ttc.toFixed(2)),
+      amount_paid: "0",
+      due_date: form.dueDate || null,
+      payment_method: form.paymentMethod || null,
       notes: form.notes || null,
-      retenueGarantiePercent: retPct > 0 ? String(retPct) : null,
-      retenueGarantieAmount: retPct > 0 ? String((ttc * retPct / 100).toFixed(2)) : null,
-      primeEnergieAmount: form.primeEnergieAmount || null,
-      primeEnergieType: form.primeEnergieType || null,
+      retenue_garantie_percent: retPct > 0 ? String(retPct) : null,
+      retenue_garantie_amount: retPct > 0 ? String((ttc * retPct / 100).toFixed(2)) : null,
+      prime_energie_amount: form.primeEnergieAmount || null,
+      prime_energie_type: form.primeEnergieType || null,
     });
   }
 
@@ -282,30 +277,30 @@ export default function FacturesPage() {
     if (tab === "brouillons" && inv.status !== "brouillon") return false;
     if (tab === "envoyees" && inv.status !== "envoyée") return false;
     if (tab === "en_retard") {
-      const isOverdue = (inv.status === "envoyée" || inv.status === "partiellement_payée") && inv.dueDate && new Date(inv.dueDate) < now;
+      const isOverdue = (inv.status === "envoyée" || inv.status === "partiellement_payée") && inv.due_date && new Date(inv.due_date) < now;
       if (!isOverdue) return false;
     }
     if (tab === "payees" && inv.status !== "payée") return false;
     if (tab === "avoirs" && inv.type !== "avoir") return false;
     if (tab === "factures" && inv.type === "avoir") return false;
     if (search) {
-      const c = contactMap.get(inv.contactId);
-      const cName = c ? contactName(c).toLowerCase() : "";
+      const c = contactMap.get(inv.contact_id);
+      const cName = c ? contactName({ firstName: c.first_name, lastName: c.last_name, company: c.company } as any).toLowerCase() : "";
       const term = search.toLowerCase();
       return inv.number.toLowerCase().includes(term) || (inv.title || "").toLowerCase().includes(term) || cName.includes(term);
     }
     return true;
   });
 
-  const totalTTC = invoices.filter(i => i.type !== "avoir").reduce((s, i) => s + parseFloat(i.amountTTC || "0"), 0);
-  const totalPaid = invoices.reduce((s, i) => s + parseFloat(i.amountPaid || "0"), 0);
-  const totalPending = invoices.filter(i => i.status === "envoyée").reduce((s, i) => s + parseFloat(i.amountTTC || "0"), 0);
-  const totalAvoirs = invoices.filter(i => i.type === "avoir").reduce((s, i) => s + Math.abs(parseFloat(i.amountTTC || "0")), 0);
+  const totalTTC = invoices.filter(i => i.type !== "avoir").reduce((s: number, i: any) => s + parseFloat(i.amount_ttc || "0"), 0);
+  const totalPaid = invoices.reduce((s: number, i: any) => s + parseFloat(i.amount_paid || "0"), 0);
+  const totalPending = invoices.filter(i => i.status === "envoyée").reduce((s: number, i: any) => s + parseFloat(i.amount_ttc || "0"), 0);
+  const totalAvoirs = invoices.filter(i => i.type === "avoir").reduce((s: number, i: any) => s + Math.abs(parseFloat(i.amount_ttc || "0")), 0);
 
   // Count for tabs
   const brouillonsCount = invoices.filter(i => i.status === "brouillon").length;
   const envoyeesCount = invoices.filter(i => i.status === "envoyée").length;
-  const enRetardCount = invoices.filter(i => (i.status === "envoyée" || i.status === "partiellement_payée") && i.dueDate && new Date(i.dueDate) < now).length;
+  const enRetardCount = invoices.filter(i => (i.status === "envoyée" || i.status === "partiellement_payée") && i.due_date && new Date(i.due_date) < now).length;
   const payeesCount = invoices.filter(i => i.status === "payée").length;
   const avoirsCount = invoices.filter(i => i.type === "avoir").length;
 
@@ -380,31 +375,31 @@ export default function FacturesPage() {
             </thead>
             <tbody>
               {filtered.map(inv => {
-                const c = contactMap.get(inv.contactId);
-                const isOverdue = (inv.status === "envoyée" || inv.status === "partiellement_payée") && inv.dueDate && new Date(inv.dueDate) < now;
-                const ttc = Math.abs(parseFloat(inv.amountTTC || "0"));
-                const paid = parseFloat(inv.amountPaid || "0");
+                const c = contactMap.get(inv.contact_id);
+                const isOverdue = (inv.status === "envoyée" || inv.status === "partiellement_payée") && inv.due_date && new Date(inv.due_date) < now;
+                const ttc = Math.abs(parseFloat(inv.amount_ttc || "0"));
+                const paid = parseFloat(inv.amount_paid || "0");
                 const paidPct = ttc > 0 ? Math.min((paid / ttc) * 100, 100) : 0;
                 return (
                   <tr key={inv.id} className={`border-b border-border/50 hover:bg-muted/30 transition-colors ${isOverdue ? "bg-red-500/5" : ""}`} data-testid={`facture-row-${inv.id}`}>
                     <td className="py-2.5 px-4 font-medium">{inv.number}</td>
                     <td className="py-2.5 px-4">
                       <Badge variant="outline" className="text-[10px] font-normal">{invoiceTypeLabel(inv.type)}</Badge>
-                      {inv.retenueGarantieAmount && <Badge variant="outline" className="text-[10px] font-normal ml-1 bg-violet-500/10 text-violet-400 border-0">RG</Badge>}
-                      {inv.primeEnergieType && <Badge variant="outline" className="text-[10px] font-normal ml-1 bg-teal-500/10 text-teal-400 border-0">{inv.primeEnergieType}</Badge>}
+                      {inv.retenue_garantie_amount && <Badge variant="outline" className="text-[10px] font-normal ml-1 bg-violet-500/10 text-violet-400 border-0">RG</Badge>}
+                      {inv.prime_energie_type && <Badge variant="outline" className="text-[10px] font-normal ml-1 bg-teal-500/10 text-teal-400 border-0">{inv.prime_energie_type}</Badge>}
                       {(paymentLinksByInvoice.get(inv.id) || []).some(pl => pl.status === "active") && (
                         <Badge variant="outline" className="text-[10px] font-normal ml-1 bg-blue-500/10 text-blue-400 border-0">
                           <Link2 className="size-2.5 mr-0.5" /> Lien actif
                         </Badge>
                       )}
                     </td>
-                    <td className="py-2.5 px-4 text-muted-foreground">{c ? contactName(c) : "—"}</td>
+                    <td className="py-2.5 px-4 text-muted-foreground">{c ? contactName({ firstName: c.first_name, lastName: c.last_name, company: c.company } as any) : "—"}</td>
                     <td className="py-2.5 px-4 max-w-[180px] truncate">{inv.title || "—"}</td>
                     <td className="py-2.5 px-4">
                       <StatusBadge status={inv.status} />
                       {isOverdue && <AlertTriangle className="size-3 text-red-400 inline ml-1" />}
                     </td>
-                    <td className="py-2.5 px-4 text-right font-medium">{formatCurrency(inv.amountTTC)}</td>
+                    <td className="py-2.5 px-4 text-right font-medium">{formatCurrency(inv.amount_ttc)}</td>
                     <td className="py-2.5 px-4">
                       {inv.type !== "avoir" && ttc > 0 ? (
                         <div className="space-y-1">
@@ -420,10 +415,10 @@ export default function FacturesPage() {
                           <div className="text-[10px] text-muted-foreground">{formatCurrency(paid)} / {formatCurrency(ttc)}</div>
                         </div>
                       ) : (
-                        <span className="text-xs text-muted-foreground">{formatCurrency(inv.amountPaid)}</span>
+                        <span className="text-xs text-muted-foreground">{formatCurrency(inv.amount_paid)}</span>
                       )}
                     </td>
-                    <td className="py-2.5 px-4 text-muted-foreground text-xs">{formatDate(inv.dueDate)}</td>
+                    <td className="py-2.5 px-4 text-muted-foreground text-xs">{formatDate(inv.due_date)}</td>
                     <td className="py-2.5 px-4">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -440,7 +435,7 @@ export default function FacturesPage() {
                               <DropdownMenuItem onClick={() => openPaymentDialog(inv)}>
                                 <Banknote className="size-3.5 mr-2" /> Règlements
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => updateMut.mutate({ id: inv.id, data: { status: "payée", amountPaid: inv.amountTTC, paymentDate: new Date().toISOString().split("T")[0] } })}>
+                              <DropdownMenuItem onClick={() => updateMut.mutate({ id: inv.id, data: { status: "payée", amount_paid: inv.amount_ttc, payment_date: new Date().toISOString().split("T")[0] } })}>
                                 <CreditCard className="size-3.5 mr-2" /> Marquer payée
                               </DropdownMenuItem>
                             </>
@@ -461,7 +456,7 @@ export default function FacturesPage() {
                               <Mail className="size-3.5 mr-2" /> Renvoyer par email
                             </DropdownMenuItem>
                           )}
-                          {inv.facturXStatus === "conforme" && (
+                          {inv.factur_x_status === "conforme" && (
                             <DropdownMenuItem>
                               <FileText className="size-3.5 mr-2" /> Factur-X ✓
                             </DropdownMenuItem>
@@ -502,7 +497,7 @@ export default function FacturesPage() {
                   <SelectTrigger data-testid="select-client-fac"><SelectValue placeholder="Client" /></SelectTrigger>
                   <SelectContent>
                     {clients.map(c => (
-                      <SelectItem key={c.id} value={String(c.id)}>{contactName(c)}</SelectItem>
+                      <SelectItem key={c.id} value={String(c.id)}>{contactName({ firstName: c.first_name, lastName: c.last_name, company: c.company } as any)}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -613,15 +608,15 @@ export default function FacturesPage() {
                 <Label>Facture *</Label>
                 <Select value={payLinkForm.invoiceId} onValueChange={v => {
                   const inv = invoices.find(i => i.id === Number(v));
-                  setPayLinkForm(f => ({ ...f, invoiceId: v, amount: inv?.amountTTC || "" }));
+                  setPayLinkForm(f => ({ ...f, invoiceId: v, amount: inv?.amount_ttc || "" }));
                 }}>
                   <SelectTrigger data-testid="select-invoice-paylink"><SelectValue placeholder="Sélectionner une facture" /></SelectTrigger>
                   <SelectContent>
                     {unpaidInvoices.map(inv => {
-                      const c = contactMap.get(inv.contactId);
+                      const c = contactMap.get(inv.contact_id);
                       return (
                         <SelectItem key={inv.id} value={String(inv.id)}>
-                          {inv.number} — {c ? contactName(c) : "—"} — {formatCurrency(inv.amountTTC)}
+                          {inv.number} — {c ? contactName({ firstName: c.first_name, lastName: c.last_name, company: c.company } as any) : "—"} — {formatCurrency(inv.amount_ttc)}
                         </SelectItem>
                       );
                     })}
@@ -671,7 +666,7 @@ export default function FacturesPage() {
           {avoirInvoice && (
             <div className="space-y-4">
               <div className="text-sm text-muted-foreground">
-                Facture : <span className="font-medium text-foreground">{avoirInvoice.number}</span> — {formatCurrency(avoirInvoice.amountTTC)} TTC
+                Facture : <span className="font-medium text-foreground">{avoirInvoice.number}</span> — {formatCurrency(avoirInvoice.amount_ttc)} TTC
               </div>
 
               <div className="grid grid-cols-2 gap-2">
@@ -702,10 +697,10 @@ export default function FacturesPage() {
                   <Label>Montant TTC de l'avoir (€)</Label>
                   <Input
                     type="number" step="0.01" min="0.01"
-                    max={Math.abs(parseFloat(avoirInvoice.amountTTC || "0")).toString()}
+                    max={Math.abs(parseFloat(avoirInvoice.amount_ttc || "0")).toString()}
                     value={avoirAmount}
                     onChange={e => setAvoirAmount(e.target.value)}
-                    placeholder={`Max: ${Math.abs(parseFloat(avoirInvoice.amountTTC || "0")).toFixed(2)}`}
+                    placeholder={`Max: ${Math.abs(parseFloat(avoirInvoice.amount_ttc || "0")).toFixed(2)}`}
                     data-testid="input-avoir-amount"
                   />
                 </div>
@@ -724,7 +719,7 @@ export default function FacturesPage() {
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Montant de l'avoir :</span>
                   <span className="font-bold text-red-400">
-                    -{formatCurrency(avoirMode === "partial" && avoirAmount ? parseFloat(avoirAmount) : Math.abs(parseFloat(avoirInvoice.amountTTC || "0")))}
+                    -{formatCurrency(avoirMode === "partial" && avoirAmount ? parseFloat(avoirAmount) : Math.abs(parseFloat(avoirInvoice.amount_ttc || "0")))}
                   </span>
                 </div>
               </div>
@@ -759,22 +754,22 @@ export default function FacturesPage() {
               <div className="bg-muted/30 rounded-lg p-3 space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Montant TTC</span>
-                  <span className="font-bold">{formatCurrency(paymentInvoice.amountTTC)}</span>
+                  <span className="font-bold">{formatCurrency(paymentInvoice.amount_ttc)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Déjà payé</span>
-                  <span className="font-bold text-emerald-400">{formatCurrency(paymentInvoice.amountPaid)}</span>
+                  <span className="font-bold text-emerald-400">{formatCurrency(paymentInvoice.amount_paid)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Reste à payer</span>
                   <span className="font-bold text-amber-400">
-                    {formatCurrency(Math.max(0, parseFloat(paymentInvoice.amountTTC || "0") - parseFloat(paymentInvoice.amountPaid || "0")))}
+                    {formatCurrency(Math.max(0, parseFloat(paymentInvoice.amount_ttc || "0") - parseFloat(paymentInvoice.amount_paid || "0")))}
                   </span>
                 </div>
                 {/* Progress bar */}
                 {(() => {
-                  const ttc = Math.abs(parseFloat(paymentInvoice.amountTTC || "0"));
-                  const paid = parseFloat(paymentInvoice.amountPaid || "0");
+                  const ttc = Math.abs(parseFloat(paymentInvoice.amount_ttc || "0"));
+                  const paid = parseFloat(paymentInvoice.amount_paid || "0");
                   const pct = ttc > 0 ? Math.min((paid / ttc) * 100, 100) : 0;
                   return (
                     <div className="flex items-center gap-2 pt-1">
@@ -810,7 +805,7 @@ export default function FacturesPage() {
               )}
 
               {/* Add payment form */}
-              {parseFloat(paymentInvoice.amountTTC || "0") > parseFloat(paymentInvoice.amountPaid || "0") && (
+              {parseFloat(paymentInvoice.amount_ttc || "0") > parseFloat(paymentInvoice.amount_paid || "0") && (
                 <div className="border-t border-border pt-4 space-y-3">
                   <div className="text-xs font-medium text-muted-foreground">Ajouter un règlement</div>
                   <div className="grid grid-cols-2 gap-3">
@@ -881,7 +876,7 @@ export default function FacturesPage() {
           {sendInvoice && (
             <div className="space-y-4">
               <div className="text-sm text-muted-foreground">
-                {sendInvoice.type === "avoir" ? "Avoir" : "Facture"} : <span className="font-medium text-foreground">{sendInvoice.number}</span> — {formatCurrency(sendInvoice.amountTTC)} TTC
+                {sendInvoice.type === "avoir" ? "Avoir" : "Facture"} : <span className="font-medium text-foreground">{sendInvoice.number}</span> — {formatCurrency(sendInvoice.amount_ttc)} TTC
               </div>
               <div>
                 <Label>Destinataire *</Label>

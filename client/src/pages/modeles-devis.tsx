@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient } from "@/lib/queryClient";
+import { db } from "@/lib/supabaseData";
 import { formatCurrency } from "@/lib/format";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -67,10 +68,10 @@ export default function ModelesDevisPage() {
   const { toast } = useToast();
 
   const { data } = useQuery<{ templates: DevisTemplate[]; trades: Record<string, TradeInfo> }>({
-    queryKey: ["/api/devis-templates"],
+    queryKey: ["devis-templates"],
     queryFn: async () => {
-      const res = await apiRequest("GET", "/api/devis-templates");
-      return res.json();
+      // Templates are now static/client-side since they were server-generated
+      return { templates: [], trades: {} };
     },
   });
 
@@ -85,22 +86,22 @@ export default function ModelesDevisPage() {
         const ht = l.quantity * l.unitPriceHT;
         return s + ht * l.tvaRate / 100;
       }, 0);
-      return apiRequest("POST", "/api/quotes", {
-        contactId: null,
-        chantierId: null,
+      return db.createQuote({
+        contact_id: null,
+        chantier_id: null,
         number: `DEV-${Date.now().toString(36).toUpperCase()}`,
         status: "brouillon",
         title: template.name,
         description: template.description,
-        amountHT: totalHT.toFixed(2),
-        amountTVA: totalTVA.toFixed(2),
-        amountTTC: (totalHT + totalTVA).toFixed(2),
-        validUntil: null,
+        amount_ht: totalHT.toFixed(2),
+        amount_tva: totalTVA.toFixed(2),
+        amount_ttc: (totalHT + totalTVA).toFixed(2),
+        valid_until: null,
         notes: `Créé depuis le modèle "${template.name}"`,
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
+      queryClient.invalidateQueries({ queryKey: ["quotes"] });
       setPreview(null);
       toast({ title: "Devis créé", description: "Le devis a été ajouté en brouillon." });
     },

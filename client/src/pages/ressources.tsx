@@ -9,13 +9,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient } from "@/lib/queryClient";
+import { db } from "@/lib/supabaseData";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Search, Phone, Mail, Wrench, Truck, HardHat, Users2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import type { Resource } from "@shared/schema";
 
 const typeIcons: Record<string, any> = {
   employe: HardHat, interimaire: Users2, sous_traitant: Wrench, materiel: Truck,
@@ -42,7 +42,7 @@ export default function RessourcesPage() {
   const [tab, setTab] = useState("all");
   const { toast } = useToast();
 
-  const { data: resources = [] } = useQuery<Resource[]>({ queryKey: ["/api/resources"] });
+  const { data: resources = [] } = useQuery<any[]>({ queryKey: ["resources"], queryFn: () => db.getResources() });
 
   const [form, setForm] = useState({
     type: "employe", name: "", role: "", phone: "", email: "",
@@ -51,9 +51,9 @@ export default function RessourcesPage() {
   });
 
   const createMut = useMutation({
-    mutationFn: async (data: any) => apiRequest("POST", "/api/resources", data),
+    mutationFn: async (data: any) => db.createResource(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/resources"] });
+      queryClient.invalidateQueries({ queryKey: ["resources"] });
       setOpen(false);
       toast({ title: "Ressource créée" });
     },
@@ -64,10 +64,10 @@ export default function RessourcesPage() {
     createMut.mutate({
       type: form.type, name: form.name, role: form.role || null,
       phone: form.phone || null, email: form.email || null,
-      hourlyRate: form.hourlyRate || null, status: form.status,
+      hourly_rate: form.hourlyRate || null, status: form.status,
       skills: form.skills || null, company: form.company || null,
       siret: form.siret || null, category: form.category || null,
-      serialNumber: form.serialNumber || null,
+      serial_number: form.serialNumber || null,
     });
   }
 
@@ -137,12 +137,12 @@ export default function RessourcesPage() {
                 <div className="mt-3 space-y-1">
                   {r.phone && <div className="flex items-center gap-2 text-xs text-muted-foreground"><Phone className="size-3" />{r.phone}</div>}
                   {r.email && <div className="flex items-center gap-2 text-xs text-muted-foreground"><Mail className="size-3" />{r.email}</div>}
-                  {r.hourlyRate && <div className="text-xs text-muted-foreground">Taux horaire: <span className="text-foreground font-medium">{formatCurrency(r.hourlyRate)}/h</span></div>}
+                  {r.hourly_rate && <div className="text-xs text-muted-foreground">Taux horaire: <span className="text-foreground font-medium">{formatCurrency(r.hourly_rate)}/h</span></div>}
                   {r.category && <div className="text-xs text-muted-foreground">Catégorie: {r.category}</div>}
-                  {r.serialNumber && <div className="text-xs text-muted-foreground">N° série: {r.serialNumber}</div>}
-                  {r.nextMaintenanceDate && <div className="text-xs text-muted-foreground">Proch. maintenance: {formatDate(r.nextMaintenanceDate)}</div>}
+                  {r.serial_number && <div className="text-xs text-muted-foreground">N° série: {r.serial_number}</div>}
+                  {r.next_maintenance_date && <div className="text-xs text-muted-foreground">Proch. maintenance: {formatDate(r.next_maintenance_date)}</div>}
                   {r.certifications && <div className="text-xs text-muted-foreground mt-1">{r.certifications}</div>}
-                  {r.assuranceExpiry && <div className="text-xs text-muted-foreground">Assurance exp.: {formatDate(r.assuranceExpiry)}</div>}
+                  {r.assurance_expiry && <div className="text-xs text-muted-foreground">Assurance exp.: {formatDate(r.assurance_expiry)}</div>}
                 </div>
               </CardContent>
             </Card>

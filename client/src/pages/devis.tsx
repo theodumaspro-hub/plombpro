@@ -9,7 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient } from "@/lib/queryClient";
+import { db } from "@/lib/supabaseData";
 import { formatCurrency, formatDate, contactName } from "@/lib/format";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useToast } from "@/hooks/use-toast";
@@ -33,11 +34,11 @@ export default function DevisPage() {
   const [filterStatus, setFilterStatus] = useState("all");
   const { toast } = useToast();
 
-  const { data: quotes = [], isLoading } = useQuery<Quote[]>({ queryKey: ["/api/quotes"] });
-  const { data: contacts = [] } = useQuery<Contact[]>({ queryKey: ["/api/contacts"] });
-  const { data: templates = [] } = useQuery<any[]>({ queryKey: ["/api/quote-templates"] });
-  const contactMap = new Map(contacts.map(c => [c.id, c]));
-  const clients = contacts.filter(c => c.type === "client");
+  const { data: quotes = [], isLoading } = useQuery<any[]>({ queryKey: ["quotes"], queryFn: () => db.getQuotes() });
+  const { data: contacts = [] } = useQuery<any[]>({ queryKey: ["contacts"], queryFn: () => db.getContacts() });
+  const templates: any[] = [];
+  const contactMap = new Map(contacts.map((c: any) => [c.id, c]));
+  const clients = contacts.filter((c: any) => c.type === "client");
 
   const [form, setForm] = useState({
     contactId: "", title: "", tvaRate: "10", validUntil: "", notes: "", conditions: "Validité 30 jours. Acompte 30% à la commande.",
@@ -46,11 +47,10 @@ export default function DevisPage() {
 
   const createMut = useMutation({
     mutationFn: async (data: any) => {
-      const res = await apiRequest("POST", "/api/quotes", data);
-      return res.json();
+      return db.createQuote(data);
     },
     onSuccess: (newQuote) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
+      queryClient.invalidateQueries({ queryKey: ["quotes"] });
       setOpen(false);
       resetForm();
       // Navigate to edit page after creation
@@ -60,20 +60,19 @@ export default function DevisPage() {
   });
 
   const updateMut = useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: any }) => apiRequest("PATCH", `/api/quotes/${id}`, data),
+    mutationFn: async ({ id, data }: { id: number; data: any }) => db.updateQuote(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
+      queryClient.invalidateQueries({ queryKey: ["quotes"] });
       toast({ title: "Devis mis à jour" });
     },
   });
 
   const duplicateMut = useMutation({
     mutationFn: async (id: number) => {
-      const res = await apiRequest("POST", `/api/quotes/${id}/duplicate`);
-      return res.json();
+      return db.duplicateQuote(id);
     },
     onSuccess: (newQuote) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
+      queryClient.invalidateQueries({ queryKey: ["quotes"] });
       toast({ title: "Devis dupliqué", description: `${newQuote.number} créé en brouillon.` });
       // Navigate to the duplicate
       setLocation(`/devis/${newQuote.id}`);
@@ -84,16 +83,16 @@ export default function DevisPage() {
   });
 
   const deleteMut = useMutation({
-    mutationFn: async (id: number) => apiRequest("DELETE", `/api/quotes/${id}`),
+    mutationFn: async (id: number) => db.deleteQuote(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
+      queryClient.invalidateQueries({ queryKey: ["quotes"] });
       toast({ title: "Devis supprimé" });
     },
   });
 
   // ─── Signature électronique ────────────────────
   const [signOpen, setSignOpen] = useState(false);
-  const [signQuote, setSignQuote] = useState<Quote | null>(null);
+  const [signQuote, setSignQuote] = useState<any | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isDrawing = useRef(false);
 
@@ -153,13 +152,13 @@ export default function DevisPage() {
 
   const signMut = useMutation({
     mutationFn: async ({ id, signatureData }: { id: number; signatureData: string }) =>
-      apiRequest("PATCH", `/api/quotes/${id}`, {
+      db.updateQuote(id, {
         status: "signé",
-        signedAt: new Date().toISOString().split("T")[0],
-        signatureData,
+        signed_at: new Date().toISOString().split("T")[0],
+        signature_data: signatureData,
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
+      queryClient.invalidateQueries({ queryKey: ["quotes"] });
       setSignOpen(false);
       setSignQuote(null);
       toast({ title: "Devis signé avec succès" });
@@ -181,23 +180,23 @@ export default function DevisPage() {
     e.preventDefault();
     const num = `DEV-2026-${String(quotes.length + 1).padStart(3, "0")}`;
     createMut.mutate({
-      contactId: Number(form.contactId),
+      contact_id: Number(form.contactId),
       number: num,
       status: "brouillon",
       title: form.title,
-      amountHT: "0",
-      amountTVA: "0",
-      amountTTC: "0",
-      validUntil: form.validUntil || null,
+      amount_ht: "0",
+      amount_tva: "0",
+      amount_ttc: "0",
+      valid_until: form.validUntil || null,
       notes: form.notes || null,
       conditions: form.conditions || null,
     });
   }
 
-  const filtered = quotes.filter(q => {
+  const filtered = quotes.filter((q: any) => {
     if (filterStatus !== "all" && q.status !== filterStatus) return false;
     if (search) {
-      const c = contactMap.get(q.contactId);
+      const c = contactMap.get(q.contact_id);
       const cName = c ? contactName(c).toLowerCase() : "";
       const term = search.toLowerCase();
       return q.number.toLowerCase().includes(term) || (q.title || "").toLowerCase().includes(term) || cName.includes(term);
@@ -206,9 +205,9 @@ export default function DevisPage() {
   });
 
   const totals = {
-    brouillon: quotes.filter(q => q.status === "brouillon").reduce((s, q) => s + parseFloat(q.amountTTC || "0"), 0),
-    envoyé: quotes.filter(q => q.status === "envoyé").reduce((s, q) => s + parseFloat(q.amountTTC || "0"), 0),
-    signé: quotes.filter(q => q.status === "signé").reduce((s, q) => s + parseFloat(q.amountTTC || "0"), 0),
+    brouillon: quotes.filter((q: any) => q.status === "brouillon").reduce((s: number, q: any) => s + parseFloat(q.amount_ttc || "0"), 0),
+    envoyé: quotes.filter((q: any) => q.status === "envoyé").reduce((s: number, q: any) => s + parseFloat(q.amount_ttc || "0"), 0),
+    signé: quotes.filter((q: any) => q.status === "signé").reduce((s: number, q: any) => s + parseFloat(q.amount_ttc || "0"), 0),
   };
 
   return (
@@ -279,8 +278,8 @@ export default function DevisPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map(q => {
-                const c = contactMap.get(q.contactId);
+              {filtered.map((q: any) => {
+                const c = contactMap.get(q.contact_id);
                 return (
                   <tr
                     key={q.id}
@@ -292,8 +291,8 @@ export default function DevisPage() {
                     <td className="py-2.5 px-4 text-muted-foreground">{c ? contactName(c) : "—"}</td>
                     <td className="py-2.5 px-4 max-w-[200px] truncate">{q.title || "—"}</td>
                     <td className="py-2.5 px-4"><StatusBadge status={q.status} /></td>
-                    <td className="py-2.5 px-4 text-right font-medium">{formatCurrency(q.amountTTC)}</td>
-                    <td className="py-2.5 px-4 text-muted-foreground text-xs">{formatDate(q.validUntil)}</td>
+                    <td className="py-2.5 px-4 text-right font-medium">{formatCurrency(q.amount_ttc)}</td>
+                    <td className="py-2.5 px-4 text-muted-foreground text-xs">{formatDate(q.valid_until)}</td>
                     <td className="py-2.5 px-4" onClick={e => e.stopPropagation()}>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -309,7 +308,7 @@ export default function DevisPage() {
                             </DropdownMenuItem>
                           )}
                           {q.status === "envoyé" && (
-                            <DropdownMenuItem onClick={() => updateMut.mutate({ id: q.id, data: { status: "signé", signedAt: new Date().toISOString().split("T")[0] } })}>
+                            <DropdownMenuItem onClick={() => updateMut.mutate({ id: q.id, data: { status: "signé", signed_at: new Date().toISOString().split("T")[0] } })}>
                               <FileCheck className="size-3.5 mr-2" /> Marquer signé
                             </DropdownMenuItem>
                           )}
@@ -356,11 +355,11 @@ export default function DevisPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Client</span>
-                  <span className="font-medium">{contactMap.get(signQuote.contactId) ? contactName(contactMap.get(signQuote.contactId)!) : "—"}</span>
+                  <span className="font-medium">{contactMap.get(signQuote.contact_id) ? contactName(contactMap.get(signQuote.contact_id)!) : "—"}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Montant TTC</span>
-                  <span className="font-bold">{formatCurrency(signQuote.amountTTC)}</span>
+                  <span className="font-bold">{formatCurrency(signQuote.amount_ttc)}</span>
                 </div>
               </div>
               <div>
@@ -399,7 +398,7 @@ export default function DevisPage() {
               <Select value={form.contactId} onValueChange={v => setForm(f => ({ ...f, contactId: v }))}>
                 <SelectTrigger data-testid="select-client"><SelectValue placeholder="Sélectionner un client" /></SelectTrigger>
                 <SelectContent>
-                  {clients.map(c => (
+                  {clients.map((c: any) => (
                     <SelectItem key={c.id} value={String(c.id)}>{contactName(c)}{c.company ? ` — ${c.company}` : ""}</SelectItem>
                   ))}
                 </SelectContent>

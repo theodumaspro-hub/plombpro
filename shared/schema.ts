@@ -1,497 +1,484 @@
-import { pgTable, text, serial, integer, boolean, decimal, timestamp } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // ─── Company / Onboarding ─────────────────────────────────────────
-export const companySettings = pgTable("company_settings", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull(),
-  siret: text("siret"),
-  tvaIntracom: text("tva_intracom"),
-  address: text("address"),
-  city: text("city"),
-  postalCode: text("postal_code"),
-  phone: text("phone"),
-  email: text("email"),
-  rcsNumber: text("rcs_number"),
-  assuranceDecennale: text("assurance_decennale"),
-  qualifications: text("qualifications"),
-  logo: text("logo"),
-  trade: text("trade"), // plomberie, chauffage, climatisation etc.
-  legalForm: text("legal_form"), // SARL, SAS, auto-entrepreneur etc.
-  capital: text("capital"),
-  apeCode: text("ape_code"),
-  iban: text("iban"),
-  bic: text("bic"),
-  bankName: text("bank_name"),
-  defaultTvaRate: decimal("default_tva_rate").default("20"),
-  defaultPaymentDelay: integer("default_payment_delay").default(30),
-  // Document template settings
-  documentColor: text("document_color").default("#C87941"),
-  logoAlignment: text("logo_alignment").default("left"), // left, center, right
-  tableStyle: text("table_style").default("striped"), // striped, bordered, minimal
-  devisPrefix: text("devis_prefix").default("DEV"),
-  facturePrefix: text("facture_prefix").default("FAC"),
-  avoirPrefix: text("avoir_prefix").default("AV"),
-  numberSeparator: text("number_separator").default("-"),
-  numberYearFormat: text("number_year_format").default("YYYY"), // YYYY, YY
-  defaultValidity: integer("default_validity").default(30), // devis validity in days
-  defaultPaymentMethods: text("default_payment_methods"), // JSON array: ["virement","chèque","CB"]
-  defaultAcompteRate: decimal("default_acompte_rate").default("30"),
-  cgvText: text("cgv_text"),
-  showCgv: boolean("show_cgv").default(false),
-  autoliquidationMention: text("autoliquidation_mention"),
-  // Onboarding state
-  onboardingCompleted: boolean("onboarding_completed").default(false),
-  onboardingStep: integer("onboarding_step").default(0),
-  // Subscription
-  plan: text("plan").default("free"), // free, pro, croissance, booster
-  planStartDate: text("plan_start_date"),
-  planEndDate: text("plan_end_date"),
-  trialEndsAt: text("trial_ends_at"),
+export const companySettingsSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  siret: z.string().nullable(),
+  tva_intracom: z.string().nullable(),
+  address: z.string().nullable(),
+  city: z.string().nullable(),
+  postal_code: z.string().nullable(),
+  phone: z.string().nullable(),
+  email: z.string().nullable(),
+  rcs_number: z.string().nullable(),
+  assurance_decennale: z.string().nullable(),
+  qualifications: z.string().nullable(),
+  logo: z.string().nullable(),
+  trade: z.string().nullable(),
+  legal_form: z.string().nullable(),
+  capital: z.string().nullable(),
+  ape_code: z.string().nullable(),
+  iban: z.string().nullable(),
+  bic: z.string().nullable(),
+  bank_name: z.string().nullable(),
+  default_tva_rate: z.string().nullable(),
+  default_payment_delay: z.number().nullable(),
+  document_color: z.string().nullable(),
+  logo_alignment: z.string().nullable(),
+  table_style: z.string().nullable(),
+  devis_prefix: z.string().nullable(),
+  facture_prefix: z.string().nullable(),
+  avoir_prefix: z.string().nullable(),
+  number_separator: z.string().nullable(),
+  number_year_format: z.string().nullable(),
+  default_validity: z.number().nullable(),
+  default_payment_methods: z.string().nullable(),
+  default_acompte_rate: z.string().nullable(),
+  cgv_text: z.string().nullable(),
+  show_cgv: z.boolean().nullable(),
+  autoliquidation_mention: z.string().nullable(),
+  onboarding_completed: z.boolean().nullable(),
+  onboarding_step: z.number().nullable(),
+  plan: z.string().nullable(),
+  plan_start_date: z.string().nullable(),
+  plan_end_date: z.string().nullable(),
+  trial_ends_at: z.string().nullable(),
 });
-export const insertCompanySettingsSchema = createInsertSchema(companySettings).omit({ id: true });
-export type CompanySettings = typeof companySettings.$inferSelect;
+export type CompanySettings = z.infer<typeof companySettingsSchema>;
+export const insertCompanySettingsSchema = companySettingsSchema.omit({ id: true });
 export type InsertCompanySettings = z.infer<typeof insertCompanySettingsSchema>;
 
 // ─── Contacts (Clients + Fournisseurs) ───────────────────────────
-export const contacts = pgTable("contacts", {
-  id: serial("id").primaryKey(),
-  type: text("type").notNull(), // client, fournisseur
-  category: text("category"), // particulier, professionnel
-  firstName: text("first_name"),
-  lastName: text("last_name"),
-  company: text("company"),
-  email: text("email"),
-  phone: text("phone"),
-  mobile: text("mobile"),
-  address: text("address"),
-  city: text("city"),
-  postalCode: text("postal_code"),
-  siret: text("siret"),
-  tvaIntracom: text("tva_intracom"),
-  notes: text("notes"),
-  tags: text("tags"), // JSON array
-  totalQuoted: decimal("total_quoted").default("0"),
-  totalBilled: decimal("total_billed").default("0"),
-  totalPaid: decimal("total_paid").default("0"),
-  createdAt: timestamp("created_at").defaultNow(),
+export const contactSchema = z.object({
+  id: z.number(),
+  type: z.string(),
+  category: z.string().nullable(),
+  first_name: z.string().nullable(),
+  last_name: z.string().nullable(),
+  company: z.string().nullable(),
+  email: z.string().nullable(),
+  phone: z.string().nullable(),
+  mobile: z.string().nullable(),
+  address: z.string().nullable(),
+  city: z.string().nullable(),
+  postal_code: z.string().nullable(),
+  siret: z.string().nullable(),
+  tva_intracom: z.string().nullable(),
+  notes: z.string().nullable(),
+  tags: z.string().nullable(),
+  total_quoted: z.string().nullable(),
+  total_billed: z.string().nullable(),
+  total_paid: z.string().nullable(),
+  created_at: z.string().nullable(),
 });
-export const insertContactSchema = createInsertSchema(contacts).omit({ id: true, createdAt: true });
-export type Contact = typeof contacts.$inferSelect;
+export type Contact = z.infer<typeof contactSchema>;
+export const insertContactSchema = contactSchema.omit({ id: true, created_at: true });
 export type InsertContact = z.infer<typeof insertContactSchema>;
 
 // ─── Devis (Quotes) ──────────────────────────────────────────────
-export const quotes = pgTable("quotes", {
-  id: serial("id").primaryKey(),
-  contactId: integer("contact_id").notNull(),
-  chantierId: integer("chantier_id"),
-  number: text("number").notNull(), // DEV-2026-001
-  status: text("status").notNull(), // brouillon, envoyé, signé, refusé, expiré
-  title: text("title"),
-  description: text("description"),
-  amountHT: decimal("amount_ht").default("0"),
-  amountTVA: decimal("amount_tva").default("0"),
-  amountTTC: decimal("amount_ttc").default("0"),
-  discountPercent: decimal("discount_percent"),
-  discountAmount: decimal("discount_amount"),
-  validUntil: text("valid_until"),
-  signedAt: text("signed_at"),
-  signatureData: text("signature_data"),
-  notes: text("notes"),
-  conditions: text("conditions"),
-  createdAt: timestamp("created_at").defaultNow(),
+export const quoteSchema = z.object({
+  id: z.number(),
+  contact_id: z.number(),
+  chantier_id: z.number().nullable(),
+  number: z.string(),
+  status: z.string(),
+  title: z.string().nullable(),
+  description: z.string().nullable(),
+  amount_ht: z.string().nullable(),
+  amount_tva: z.string().nullable(),
+  amount_ttc: z.string().nullable(),
+  discount_percent: z.string().nullable(),
+  discount_amount: z.string().nullable(),
+  valid_until: z.string().nullable(),
+  signed_at: z.string().nullable(),
+  signature_data: z.string().nullable(),
+  notes: z.string().nullable(),
+  conditions: z.string().nullable(),
+  created_at: z.string().nullable(),
 });
-export const insertQuoteSchema = createInsertSchema(quotes).omit({ id: true, createdAt: true });
-export type Quote = typeof quotes.$inferSelect;
+export type Quote = z.infer<typeof quoteSchema>;
+export const insertQuoteSchema = quoteSchema.omit({ id: true, created_at: true });
 export type InsertQuote = z.infer<typeof insertQuoteSchema>;
 
 // ─── Factures (Invoices) ─────────────────────────────────────────
-export const invoices = pgTable("invoices", {
-  id: serial("id").primaryKey(),
-  contactId: integer("contact_id").notNull(),
-  chantierId: integer("chantier_id"),
-  quoteId: integer("quote_id"),
-  number: text("number").notNull(), // FAC-2026-001
-  type: text("type").notNull(), // facture, avoir, acompte, situation, retenue_garantie
-  status: text("status").notNull(), // brouillon, envoyée, payée, en_retard, annulée, partiellement_payée
-  title: text("title"),
-  amountHT: decimal("amount_ht").default("0"),
-  amountTVA: decimal("amount_tva").default("0"),
-  amountTTC: decimal("amount_ttc").default("0"),
-  amountPaid: decimal("amount_paid").default("0"),
-  paymentMethod: text("payment_method"),
-  paymentDate: text("payment_date"),
-  dueDate: text("due_date"),
-  reminderCount: integer("reminder_count").default(0),
-  lastReminderDate: text("last_reminder_date"),
-  // Situation invoice fields
-  situationNumber: integer("situation_number"),
-  situationPercent: decimal("situation_percent"),
-  // Retenue de garantie
-  retenueGarantiePercent: decimal("retenue_garantie_percent"),
-  retenueGarantieAmount: decimal("retenue_garantie_amount"),
-  retenueGarantieDueDate: text("retenue_garantie_due_date"),
-  // Prime énergie / CEE
-  primeEnergieAmount: decimal("prime_energie_amount"),
-  primeEnergieType: text("prime_energie_type"), // CEE, MaPrimeRenov, eco-PTZ
-  // E-invoicing (Factur-X)
-  facturXStatus: text("factur_x_status"),
-  facturXFormat: text("factur_x_format"),
-  notes: text("notes"),
-  conditions: text("conditions"),
-  createdAt: timestamp("created_at").defaultNow(),
+export const invoiceSchema = z.object({
+  id: z.number(),
+  contact_id: z.number(),
+  chantier_id: z.number().nullable(),
+  quote_id: z.number().nullable(),
+  number: z.string(),
+  type: z.string(),
+  status: z.string(),
+  title: z.string().nullable(),
+  amount_ht: z.string().nullable(),
+  amount_tva: z.string().nullable(),
+  amount_ttc: z.string().nullable(),
+  amount_paid: z.string().nullable(),
+  payment_method: z.string().nullable(),
+  payment_date: z.string().nullable(),
+  due_date: z.string().nullable(),
+  reminder_count: z.number().nullable(),
+  last_reminder_date: z.string().nullable(),
+  situation_number: z.number().nullable(),
+  situation_percent: z.string().nullable(),
+  retenue_garantie_percent: z.string().nullable(),
+  retenue_garantie_amount: z.string().nullable(),
+  retenue_garantie_due_date: z.string().nullable(),
+  prime_energie_amount: z.string().nullable(),
+  prime_energie_type: z.string().nullable(),
+  factur_x_status: z.string().nullable(),
+  factur_x_format: z.string().nullable(),
+  notes: z.string().nullable(),
+  conditions: z.string().nullable(),
+  created_at: z.string().nullable(),
 });
-export const insertInvoiceSchema = createInsertSchema(invoices).omit({ id: true, createdAt: true });
-export type Invoice = typeof invoices.$inferSelect;
+export type Invoice = z.infer<typeof invoiceSchema>;
+export const insertInvoiceSchema = invoiceSchema.omit({ id: true, created_at: true });
 export type InsertInvoice = z.infer<typeof insertInvoiceSchema>;
 
 // ─── Document Lines (shared by quotes + invoices) ────────────────
-export const documentLines = pgTable("document_lines", {
-  id: serial("id").primaryKey(),
-  documentType: text("document_type").notNull(), // quote, invoice
-  documentId: integer("document_id").notNull(),
-  libraryItemId: integer("library_item_id"),
-  designation: text("designation").notNull(),
-  description: text("description"),
-  quantity: decimal("quantity").default("1"),
-  unit: text("unit").default("u"), // u, m, m², m³, h, forfait, ens, kg, l
-  unitPriceHT: decimal("unit_price_ht").default("0"),
-  tvaRate: decimal("tva_rate").default("20"), // 20, 10, 5.5, 2.1, 0
-  totalHT: decimal("total_ht").default("0"),
-  sortOrder: integer("sort_order").default(0),
-  isTitle: boolean("is_title").default(false), // for section headings
-  isSubtotal: boolean("is_subtotal").default(false),
-  lineType: text("line_type"), // fourniture, main_oeuvre, ouvrage, sous_traitance, materiel, divers
-  purchasePriceHT: decimal("purchase_price_ht"),
-  coefficient: decimal("coefficient"),
-  marginPercent: decimal("margin_percent"),
+export const documentLineSchema = z.object({
+  id: z.number(),
+  document_type: z.string(),
+  document_id: z.number(),
+  library_item_id: z.number().nullable(),
+  designation: z.string(),
+  description: z.string().nullable(),
+  quantity: z.string().nullable(),
+  unit: z.string().nullable(),
+  unit_price_ht: z.string().nullable(),
+  tva_rate: z.string().nullable(),
+  total_ht: z.string().nullable(),
+  sort_order: z.number().nullable(),
+  is_title: z.boolean().nullable(),
+  is_subtotal: z.boolean().nullable(),
+  line_type: z.string().nullable(),
+  purchase_price_ht: z.string().nullable(),
+  coefficient: z.string().nullable(),
+  margin_percent: z.string().nullable(),
 });
-export const insertDocumentLineSchema = createInsertSchema(documentLines).omit({ id: true });
-export type DocumentLine = typeof documentLines.$inferSelect;
+export type DocumentLine = z.infer<typeof documentLineSchema>;
+export const insertDocumentLineSchema = documentLineSchema.omit({ id: true });
 export type InsertDocumentLine = z.infer<typeof insertDocumentLineSchema>;
 
 // ─── Chantiers (Job Sites / Projects) ────────────────────────────
-export const chantiers = pgTable("chantiers", {
-  id: serial("id").primaryKey(),
-  contactId: integer("contact_id").notNull(),
-  reference: text("reference").notNull(), // CH-2026-001
-  title: text("title").notNull(),
-  description: text("description"),
-  status: text("status").notNull(), // prospect, planifié, en_cours, terminé, facturé, annulé
-  priority: text("priority").default("normale"), // basse, normale, haute, urgente
-  type: text("type"), // dépannage, rénovation, neuf, entretien, diagnostic
-  address: text("address"),
-  city: text("city"),
-  postalCode: text("postal_code"),
-  estimatedAmountHT: decimal("estimated_amount_ht").default("0"),
-  actualAmountHT: decimal("actual_amount_ht").default("0"),
-  costMaterials: decimal("cost_materials").default("0"),
-  costLabor: decimal("cost_labor").default("0"),
-  costSubcontractors: decimal("cost_subcontractors").default("0"),
-  margin: decimal("margin"),
-  startDate: text("start_date"),
-  endDate: text("end_date"),
-  completionPercent: integer("completion_percent").default(0),
-  notes: text("notes"),
-  createdAt: timestamp("created_at").defaultNow(),
+export const chantierSchema = z.object({
+  id: z.number(),
+  contact_id: z.number(),
+  reference: z.string(),
+  title: z.string(),
+  description: z.string().nullable(),
+  status: z.string(),
+  priority: z.string().nullable(),
+  type: z.string().nullable(),
+  address: z.string().nullable(),
+  city: z.string().nullable(),
+  postal_code: z.string().nullable(),
+  estimated_amount_ht: z.string().nullable(),
+  actual_amount_ht: z.string().nullable(),
+  cost_materials: z.string().nullable(),
+  cost_labor: z.string().nullable(),
+  cost_subcontractors: z.string().nullable(),
+  margin: z.string().nullable(),
+  start_date: z.string().nullable(),
+  end_date: z.string().nullable(),
+  completion_percent: z.number().nullable(),
+  notes: z.string().nullable(),
+  created_at: z.string().nullable(),
 });
-export const insertChantierSchema = createInsertSchema(chantiers).omit({ id: true, createdAt: true });
-export type Chantier = typeof chantiers.$inferSelect;
+export type Chantier = z.infer<typeof chantierSchema>;
+export const insertChantierSchema = chantierSchema.omit({ id: true, created_at: true });
 export type InsertChantier = z.infer<typeof insertChantierSchema>;
 
 // ─── Ressources (Employés, Intérimaires, Sous-traitants, Matériels) ─
-export const resources = pgTable("resources", {
-  id: serial("id").primaryKey(),
-  type: text("type").notNull(), // employe, interimaire, sous_traitant, materiel
-  name: text("name").notNull(),
-  role: text("role"), // plombier, apprenti, chef d'équipe
-  phone: text("phone"),
-  email: text("email"),
-  hourlyRate: decimal("hourly_rate"),
-  dailyRate: decimal("daily_rate"),
-  color: text("color"),
-  status: text("status").notNull(), // actif, inactif, en_mission
-  skills: text("skills"),
-  certifications: text("certifications"),
-  company: text("company"), // for sous-traitants
-  siret: text("siret"), // for sous-traitants
-  assuranceDecennale: text("assurance_decennale"),
-  assuranceExpiry: text("assurance_expiry"),
-  // For matériels
-  category: text("category"), // véhicule, outillage, machine
-  serialNumber: text("serial_number"),
-  purchaseDate: text("purchase_date"),
-  purchasePrice: decimal("purchase_price"),
-  nextMaintenanceDate: text("next_maintenance_date"),
-  createdAt: timestamp("created_at").defaultNow(),
+export const resourceSchema = z.object({
+  id: z.number(),
+  type: z.string(),
+  name: z.string(),
+  role: z.string().nullable(),
+  phone: z.string().nullable(),
+  email: z.string().nullable(),
+  hourly_rate: z.string().nullable(),
+  daily_rate: z.string().nullable(),
+  color: z.string().nullable(),
+  status: z.string(),
+  skills: z.string().nullable(),
+  certifications: z.string().nullable(),
+  company: z.string().nullable(),
+  siret: z.string().nullable(),
+  assurance_decennale: z.string().nullable(),
+  assurance_expiry: z.string().nullable(),
+  category: z.string().nullable(),
+  serial_number: z.string().nullable(),
+  purchase_date: z.string().nullable(),
+  purchase_price: z.string().nullable(),
+  next_maintenance_date: z.string().nullable(),
+  created_at: z.string().nullable(),
 });
-export const insertResourceSchema = createInsertSchema(resources).omit({ id: true, createdAt: true });
-export type Resource = typeof resources.$inferSelect;
+export type Resource = z.infer<typeof resourceSchema>;
+export const insertResourceSchema = resourceSchema.omit({ id: true, created_at: true });
 export type InsertResource = z.infer<typeof insertResourceSchema>;
 
 // ─── Bibliothèque (Price Catalog / Library) ──────────────────────
-export const libraryItems = pgTable("library_items", {
-  id: serial("id").primaryKey(),
-  type: text("type").notNull(), // ouvrage, fourniture, main_oeuvre
-  family: text("family"), // Plomberie, Chauffage, Sanitaire, etc.
-  subFamily: text("sub_family"),
-  reference: text("reference"),
-  designation: text("designation").notNull(),
-  description: text("description"),
-  unit: text("unit").default("u"),
-  purchasePriceHT: decimal("purchase_price_ht"),
-  sellingPriceHT: decimal("selling_price_ht").default("0"),
-  marginPercent: decimal("margin_percent"),
-  tvaRate: decimal("tva_rate").default("20"),
-  supplierId: integer("supplier_id"),
-  createdAt: timestamp("created_at").defaultNow(),
+export const libraryItemSchema = z.object({
+  id: z.number(),
+  type: z.string(),
+  family: z.string().nullable(),
+  sub_family: z.string().nullable(),
+  reference: z.string().nullable(),
+  designation: z.string(),
+  description: z.string().nullable(),
+  unit: z.string().nullable(),
+  purchase_price_ht: z.string().nullable(),
+  selling_price_ht: z.string().nullable(),
+  margin_percent: z.string().nullable(),
+  tva_rate: z.string().nullable(),
+  supplier_id: z.number().nullable(),
+  created_at: z.string().nullable(),
 });
-export const insertLibraryItemSchema = createInsertSchema(libraryItems).omit({ id: true, createdAt: true });
-export type LibraryItem = typeof libraryItems.$inferSelect;
+export type LibraryItem = z.infer<typeof libraryItemSchema>;
+export const insertLibraryItemSchema = libraryItemSchema.omit({ id: true, created_at: true });
 export type InsertLibraryItem = z.infer<typeof insertLibraryItemSchema>;
 
 // ─── Achats (Purchases / Orders) ─────────────────────────────────
-export const purchases = pgTable("purchases", {
-  id: serial("id").primaryKey(),
-  supplierId: integer("supplier_id").notNull(),
-  chantierId: integer("chantier_id"),
-  number: text("number").notNull(), // ACH-2026-001
-  status: text("status").notNull(), // brouillon, commandé, reçu, partiellement_reçu, annulé
-  amountHT: decimal("amount_ht").default("0"),
-  amountTVA: decimal("amount_tva").default("0"),
-  amountTTC: decimal("amount_ttc").default("0"),
-  orderDate: text("order_date"),
-  deliveryDate: text("delivery_date"),
-  notes: text("notes"),
-  createdAt: timestamp("created_at").defaultNow(),
+export const purchaseSchema = z.object({
+  id: z.number(),
+  supplier_id: z.number(),
+  chantier_id: z.number().nullable(),
+  number: z.string(),
+  status: z.string(),
+  amount_ht: z.string().nullable(),
+  amount_tva: z.string().nullable(),
+  amount_ttc: z.string().nullable(),
+  order_date: z.string().nullable(),
+  delivery_date: z.string().nullable(),
+  notes: z.string().nullable(),
+  created_at: z.string().nullable(),
 });
-export const insertPurchaseSchema = createInsertSchema(purchases).omit({ id: true, createdAt: true });
-export type Purchase = typeof purchases.$inferSelect;
+export type Purchase = z.infer<typeof purchaseSchema>;
+export const insertPurchaseSchema = purchaseSchema.omit({ id: true, created_at: true });
 export type InsertPurchase = z.infer<typeof insertPurchaseSchema>;
 
 // ─── Purchase Lines ──────────────────────────────────────────────
-export const purchaseLines = pgTable("purchase_lines", {
-  id: serial("id").primaryKey(),
-  purchaseId: integer("purchase_id").notNull(),
-  libraryItemId: integer("library_item_id"),
-  designation: text("designation").notNull(),
-  quantity: decimal("quantity").default("1"),
-  unit: text("unit").default("u"),
-  unitPriceHT: decimal("unit_price_ht").default("0"),
-  tvaRate: decimal("tva_rate").default("20"),
-  totalHT: decimal("total_ht").default("0"),
-  sortOrder: integer("sort_order").default(0),
+export const purchaseLineSchema = z.object({
+  id: z.number(),
+  purchase_id: z.number(),
+  library_item_id: z.number().nullable(),
+  designation: z.string(),
+  quantity: z.string().nullable(),
+  unit: z.string().nullable(),
+  unit_price_ht: z.string().nullable(),
+  tva_rate: z.string().nullable(),
+  total_ht: z.string().nullable(),
+  sort_order: z.number().nullable(),
 });
-export const insertPurchaseLineSchema = createInsertSchema(purchaseLines).omit({ id: true });
-export type PurchaseLine = typeof purchaseLines.$inferSelect;
+export type PurchaseLine = z.infer<typeof purchaseLineSchema>;
+export const insertPurchaseLineSchema = purchaseLineSchema.omit({ id: true });
 export type InsertPurchaseLine = z.infer<typeof insertPurchaseLineSchema>;
 
 // ─── Bank Transactions ───────────────────────────────────────────
-export const bankTransactions = pgTable("bank_transactions", {
-  id: serial("id").primaryKey(),
-  date: text("date").notNull(),
-  label: text("label").notNull(),
-  amount: decimal("amount").notNull(),
-  type: text("type").notNull(), // credit, debit
-  category: text("category"), // auto-categorized
-  matchedInvoiceId: integer("matched_invoice_id"),
-  matchedPurchaseId: integer("matched_purchase_id"),
-  reconciled: boolean("reconciled").default(false),
-  bankName: text("bank_name"),
-  createdAt: timestamp("created_at").defaultNow(),
+export const bankTransactionSchema = z.object({
+  id: z.number(),
+  date: z.string(),
+  label: z.string(),
+  amount: z.string(),
+  type: z.string(),
+  category: z.string().nullable(),
+  matched_invoice_id: z.number().nullable(),
+  matched_purchase_id: z.number().nullable(),
+  reconciled: z.boolean().nullable(),
+  bank_name: z.string().nullable(),
+  created_at: z.string().nullable(),
 });
-export const insertBankTransactionSchema = createInsertSchema(bankTransactions).omit({ id: true, createdAt: true });
-export type BankTransaction = typeof bankTransactions.$inferSelect;
+export type BankTransaction = z.infer<typeof bankTransactionSchema>;
+export const insertBankTransactionSchema = bankTransactionSchema.omit({ id: true, created_at: true });
 export type InsertBankTransaction = z.infer<typeof insertBankTransactionSchema>;
 
 // ─── Planning / Appointments ─────────────────────────────────────
-export const appointments = pgTable("appointments", {
-  id: serial("id").primaryKey(),
-  chantierId: integer("chantier_id"),
-  resourceId: integer("resource_id"),
-  contactId: integer("contact_id"),
-  title: text("title").notNull(),
-  type: text("type").notNull(), // intervention, visite_technique, livraison, reunion, rdv_client
-  date: text("date").notNull(),
-  startTime: text("start_time").notNull(),
-  endTime: text("end_time").notNull(),
-  address: text("address"),
-  city: text("city"),
-  status: text("status").notNull(), // planifié, en_cours, terminé, annulé
-  notes: text("notes"),
-  createdAt: timestamp("created_at").defaultNow(),
+export const appointmentSchema = z.object({
+  id: z.number(),
+  chantier_id: z.number().nullable(),
+  resource_id: z.number().nullable(),
+  contact_id: z.number().nullable(),
+  title: z.string(),
+  type: z.string(),
+  date: z.string(),
+  start_time: z.string(),
+  end_time: z.string(),
+  address: z.string().nullable(),
+  city: z.string().nullable(),
+  status: z.string(),
+  notes: z.string().nullable(),
+  created_at: z.string().nullable(),
 });
-export const insertAppointmentSchema = createInsertSchema(appointments).omit({ id: true, createdAt: true });
-export type Appointment = typeof appointments.$inferSelect;
+export type Appointment = z.infer<typeof appointmentSchema>;
+export const insertAppointmentSchema = appointmentSchema.omit({ id: true, created_at: true });
 export type InsertAppointment = z.infer<typeof insertAppointmentSchema>;
 
 // ─── Time Entries (Suivi du temps) ─────────────────────────────
-export const timeEntries = pgTable("time_entries", {
-  id: serial("id").primaryKey(),
-  resourceId: integer("resource_id").notNull(),
-  chantierId: integer("chantier_id"),
-  appointmentId: integer("appointment_id"),
-  date: text("date").notNull(),
-  startTime: text("start_time").notNull(),
-  endTime: text("end_time").notNull(),
-  duration: decimal("duration").notNull(), // in hours
-  description: text("description"),
-  type: text("type").notNull(), // intervention, deplacement, administratif, pause
-  billable: boolean("billable").default(true),
-  validated: boolean("validated").default(false),
-  createdAt: timestamp("created_at").defaultNow(),
+export const timeEntrySchema = z.object({
+  id: z.number(),
+  resource_id: z.number(),
+  chantier_id: z.number().nullable(),
+  appointment_id: z.number().nullable(),
+  date: z.string(),
+  start_time: z.string(),
+  end_time: z.string(),
+  duration: z.string(),
+  description: z.string().nullable(),
+  type: z.string(),
+  billable: z.boolean().nullable(),
+  validated: z.boolean().nullable(),
+  created_at: z.string().nullable(),
 });
-export const insertTimeEntrySchema = createInsertSchema(timeEntries).omit({ id: true, createdAt: true });
-export type TimeEntry = typeof timeEntries.$inferSelect;
+export type TimeEntry = z.infer<typeof timeEntrySchema>;
+export const insertTimeEntrySchema = timeEntrySchema.omit({ id: true, created_at: true });
 export type InsertTimeEntry = z.infer<typeof insertTimeEntrySchema>;
 
 // ─── Documents (Pièces jointes / Documents digitalisés) ───────
-export const documents = pgTable("documents", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull(),
-  type: text("type").notNull(), // devis, facture, chantier, contact, photo, attestation, autre
-  category: text("category"), // technique, administratif, photo, plan
-  relatedType: text("related_type"), // quote, invoice, chantier, contact
-  relatedId: integer("related_id"),
-  size: integer("size"), // bytes
-  mimeType: text("mime_type"),
-  url: text("url"), // simulated storage URL
-  notes: text("notes"),
-  uploadedBy: text("uploaded_by"),
-  createdAt: timestamp("created_at").defaultNow(),
+export const documentSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  type: z.string(),
+  category: z.string().nullable(),
+  related_type: z.string().nullable(),
+  related_id: z.number().nullable(),
+  size: z.number().nullable(),
+  mime_type: z.string().nullable(),
+  url: z.string().nullable(),
+  notes: z.string().nullable(),
+  uploaded_by: z.string().nullable(),
+  created_at: z.string().nullable(),
 });
-export const insertDocumentSchema = createInsertSchema(documents).omit({ id: true, createdAt: true });
-export type Document = typeof documents.$inferSelect;
+export type Document = z.infer<typeof documentSchema>;
+export const insertDocumentSchema = documentSchema.omit({ id: true, created_at: true });
 export type InsertDocument = z.infer<typeof insertDocumentSchema>;
 
 // ─── Payment Links (Paiements clients) ────────────────────────
-export const paymentLinks = pgTable("payment_links", {
-  id: serial("id").primaryKey(),
-  invoiceId: integer("invoice_id").notNull(),
-  contactId: integer("contact_id").notNull(),
-  amount: decimal("amount").notNull(),
-  status: text("status").notNull(), // active, paid, expired, cancelled
-  paymentMethod: text("payment_method"), // carte, virement, prélèvement
-  linkUrl: text("link_url"),
-  expiresAt: text("expires_at"),
-  paidAt: text("paid_at"),
-  stripePaymentIntentId: text("stripe_payment_intent_id"),
-  createdAt: timestamp("created_at").defaultNow(),
+export const paymentLinkSchema = z.object({
+  id: z.number(),
+  invoice_id: z.number(),
+  contact_id: z.number(),
+  amount: z.string(),
+  status: z.string(),
+  payment_method: z.string().nullable(),
+  link_url: z.string().nullable(),
+  expires_at: z.string().nullable(),
+  paid_at: z.string().nullable(),
+  stripe_payment_intent_id: z.string().nullable(),
+  created_at: z.string().nullable(),
 });
-export const insertPaymentLinkSchema = createInsertSchema(paymentLinks).omit({ id: true, createdAt: true });
-export type PaymentLink = typeof paymentLinks.$inferSelect;
+export type PaymentLink = z.infer<typeof paymentLinkSchema>;
+export const insertPaymentLinkSchema = paymentLinkSchema.omit({ id: true, created_at: true });
 export type InsertPaymentLink = z.infer<typeof insertPaymentLinkSchema>;
 
 // ─── Bank Accounts (Multi-comptes bancaires) ──────────────────
-export const bankAccounts = pgTable("bank_accounts", {
-  id: serial("id").primaryKey(),
-  bankName: text("bank_name").notNull(),
-  accountName: text("account_name").notNull(),
-  iban: text("iban"),
-  bic: text("bic"),
-  balance: decimal("balance").default("0"),
-  currency: text("currency").default("EUR"),
-  status: text("status").notNull(), // connected, disconnected, pending
-  lastSyncAt: text("last_sync_at"),
-  color: text("color"),
-  isDefault: boolean("is_default").default(false),
-  createdAt: timestamp("created_at").defaultNow(),
+export const bankAccountSchema = z.object({
+  id: z.number(),
+  bank_name: z.string(),
+  account_name: z.string(),
+  iban: z.string().nullable(),
+  bic: z.string().nullable(),
+  balance: z.string().nullable(),
+  currency: z.string().nullable(),
+  status: z.string(),
+  last_sync_at: z.string().nullable(),
+  color: z.string().nullable(),
+  is_default: z.boolean().nullable(),
+  created_at: z.string().nullable(),
 });
-export const insertBankAccountSchema = createInsertSchema(bankAccounts).omit({ id: true, createdAt: true });
-export type BankAccount = typeof bankAccounts.$inferSelect;
+export type BankAccount = z.infer<typeof bankAccountSchema>;
+export const insertBankAccountSchema = bankAccountSchema.omit({ id: true, created_at: true });
 export type InsertBankAccount = z.infer<typeof insertBankAccountSchema>;
 
 // ─── Companies (Multi-sociétés) ───────────────────────────────
-export const companies = pgTable("companies", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull(),
-  siret: text("siret"),
-  legalForm: text("legal_form"),
-  address: text("address"),
-  city: text("city"),
-  postalCode: text("postal_code"),
-  isActive: boolean("is_active").default(true),
-  isPrimary: boolean("is_primary").default(false),
-  color: text("color"),
-  createdAt: timestamp("created_at").defaultNow(),
+export const companySchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  siret: z.string().nullable(),
+  legal_form: z.string().nullable(),
+  address: z.string().nullable(),
+  city: z.string().nullable(),
+  postal_code: z.string().nullable(),
+  is_active: z.boolean().nullable(),
+  is_primary: z.boolean().nullable(),
+  color: z.string().nullable(),
+  created_at: z.string().nullable(),
 });
-export const insertCompanySchema = createInsertSchema(companies).omit({ id: true, createdAt: true });
-export type Company = typeof companies.$inferSelect;
+export type Company = z.infer<typeof companySchema>;
+export const insertCompanySchema = companySchema.omit({ id: true, created_at: true });
 export type InsertCompany = z.infer<typeof insertCompanySchema>;
 
 // ─── Supplier Marketplace Items ───────────────────────────────
-export const marketplaceItems = pgTable("marketplace_items", {
-  id: serial("id").primaryKey(),
-  supplierId: integer("supplier_id"),
-  supplierName: text("supplier_name").notNull(),
-  category: text("category").notNull(), // sanitaire, chauffage, outillage, EPI, tuyauterie
-  name: text("name").notNull(),
-  description: text("description"),
-  priceHT: decimal("price_ht"),
-  unit: text("unit").default("u"),
-  minQuantity: integer("min_quantity").default(1),
-  deliveryDays: integer("delivery_days"),
-  rating: decimal("rating"),
-  imageUrl: text("image_url"),
-  inStock: boolean("in_stock").default(true),
-  promoPercent: decimal("promo_percent"),
-  createdAt: timestamp("created_at").defaultNow(),
+export const marketplaceItemSchema = z.object({
+  id: z.number(),
+  supplier_id: z.number().nullable(),
+  supplier_name: z.string(),
+  category: z.string(),
+  name: z.string(),
+  description: z.string().nullable(),
+  price_ht: z.string().nullable(),
+  unit: z.string().nullable(),
+  min_quantity: z.number().nullable(),
+  delivery_days: z.number().nullable(),
+  rating: z.string().nullable(),
+  image_url: z.string().nullable(),
+  in_stock: z.boolean().nullable(),
+  promo_percent: z.string().nullable(),
+  created_at: z.string().nullable(),
 });
-export const insertMarketplaceItemSchema = createInsertSchema(marketplaceItems).omit({ id: true, createdAt: true });
-export type MarketplaceItem = typeof marketplaceItems.$inferSelect;
+export type MarketplaceItem = z.infer<typeof marketplaceItemSchema>;
+export const insertMarketplaceItemSchema = marketplaceItemSchema.omit({ id: true, created_at: true });
 export type InsertMarketplaceItem = z.infer<typeof insertMarketplaceItemSchema>;
 
 // ─── API Keys (Intégrations) ─────────────────────────────────
-export const apiKeys = pgTable("api_keys", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull(),
-  key: text("key").notNull(),
-  permissions: text("permissions"), // JSON array: ["read:quotes","write:invoices"]
-  lastUsedAt: text("last_used_at"),
-  expiresAt: text("expires_at"),
-  status: text("status").notNull(), // active, revoked, expired
-  createdAt: timestamp("created_at").defaultNow(),
+export const apiKeySchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  key: z.string(),
+  permissions: z.string().nullable(),
+  last_used_at: z.string().nullable(),
+  expires_at: z.string().nullable(),
+  status: z.string(),
+  created_at: z.string().nullable(),
 });
-export const insertApiKeySchema = createInsertSchema(apiKeys).omit({ id: true, createdAt: true });
-export type ApiKey = typeof apiKeys.$inferSelect;
+export type ApiKey = z.infer<typeof apiKeySchema>;
+export const insertApiKeySchema = apiKeySchema.omit({ id: true, created_at: true });
 export type InsertApiKey = z.infer<typeof insertApiKeySchema>;
 
 // ─── Integration Settings (Gmail, WhatsApp) ──────────────────
-export const integrationSettings = pgTable("integration_settings", {
-  id: serial("id").primaryKey(),
-  provider: text("provider").notNull(), // gmail, whatsapp
-  status: text("status").notNull(), // connected, disconnected, expired
-  // Gmail OAuth
-  accessToken: text("access_token"),
-  refreshToken: text("refresh_token"),
-  tokenExpiry: text("token_expiry"),
-  gmailEmail: text("gmail_email"),
-  // WhatsApp Business
-  whatsappPhone: text("whatsapp_phone"),
-  whatsappApiKey: text("whatsapp_api_key"),
-  whatsappInstanceId: text("whatsapp_instance_id"),
-  // General
-  metadata: text("metadata"), // JSON for additional provider config
-  connectedAt: text("connected_at"),
-  createdAt: timestamp("created_at").defaultNow(),
+export const integrationSettingsSchema = z.object({
+  id: z.number(),
+  provider: z.string(),
+  status: z.string(),
+  access_token: z.string().nullable(),
+  refresh_token: z.string().nullable(),
+  token_expiry: z.string().nullable(),
+  gmail_email: z.string().nullable(),
+  whatsapp_phone: z.string().nullable(),
+  whatsapp_api_key: z.string().nullable(),
+  whatsapp_instance_id: z.string().nullable(),
+  metadata: z.string().nullable(),
+  connected_at: z.string().nullable(),
+  created_at: z.string().nullable(),
 });
-export const insertIntegrationSettingsSchema = createInsertSchema(integrationSettings).omit({ id: true, createdAt: true });
-export type IntegrationSettings = typeof integrationSettings.$inferSelect;
+export type IntegrationSettings = z.infer<typeof integrationSettingsSchema>;
+export const insertIntegrationSettingsSchema = integrationSettingsSchema.omit({ id: true, created_at: true });
 export type InsertIntegrationSettings = z.infer<typeof insertIntegrationSettingsSchema>;
 
 // ─── Webhooks ─────────────────────────────────────────────────
-export const webhooks = pgTable("webhooks", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull(),
-  url: text("url").notNull(),
-  events: text("events").notNull(), // JSON array: ["invoice.created","quote.signed"]
-  secret: text("secret"),
-  status: text("status").notNull(), // active, paused, failed
-  lastTriggeredAt: text("last_triggered_at"),
-  failureCount: integer("failure_count").default(0),
-  createdAt: timestamp("created_at").defaultNow(),
+export const webhookSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  url: z.string(),
+  events: z.string(),
+  secret: z.string().nullable(),
+  status: z.string(),
+  last_triggered_at: z.string().nullable(),
+  failure_count: z.number().nullable(),
+  created_at: z.string().nullable(),
 });
-export const insertWebhookSchema = createInsertSchema(webhooks).omit({ id: true, createdAt: true });
-export type Webhook = typeof webhooks.$inferSelect;
+export type Webhook = z.infer<typeof webhookSchema>;
+export const insertWebhookSchema = webhookSchema.omit({ id: true, created_at: true });
 export type InsertWebhook = z.infer<typeof insertWebhookSchema>;

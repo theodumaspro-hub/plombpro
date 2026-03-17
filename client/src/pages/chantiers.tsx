@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient } from "@/lib/queryClient";
+import { db } from "@/lib/supabaseData";
 import { formatCurrency, formatDate, contactName, formatPercent } from "@/lib/format";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useToast } from "@/hooks/use-toast";
@@ -36,20 +37,20 @@ export default function ChantiersPage() {
 
   const [detailId, setDetailId] = useState<number | null>(null);
 
-  const { data: chantiers = [] } = useQuery<Chantier[]>({ queryKey: ["/api/chantiers"] });
-  const { data: contacts = [] } = useQuery<Contact[]>({ queryKey: ["/api/contacts"] });
-  const { data: quotes = [] } = useQuery<Quote[]>({ queryKey: ["/api/quotes"] });
-  const { data: invoices = [] } = useQuery<Invoice[]>({ queryKey: ["/api/invoices"] });
-  const contactMap = new Map(contacts.map(c => [c.id, c]));
-  const clients = contacts.filter(c => c.type === "client");
+  const { data: chantiers = [] } = useQuery<any[]>({ queryKey: ["chantiers"], queryFn: () => db.getChantiers() });
+  const { data: contacts = [] } = useQuery<any[]>({ queryKey: ["contacts"], queryFn: () => db.getContacts() });
+  const { data: quotes = [] } = useQuery<any[]>({ queryKey: ["quotes"], queryFn: () => db.getQuotes() });
+  const { data: invoices = [] } = useQuery<any[]>({ queryKey: ["invoices"], queryFn: () => db.getInvoices() });
+  const contactMap = new Map(contacts.map((c: any) => [c.id, c]));
+  const clients = contacts.filter((c: any) => c.type === "client");
 
   // Financial helpers per chantier
   function getChantierFinancials(chId: number) {
-    const chQuotes = quotes.filter(q => q.chantierId === chId);
-    const chInvoices = invoices.filter(i => i.chantierId === chId && i.type !== "avoir");
-    const deviseTTC = chQuotes.filter(q => q.status === "signé").reduce((s, q) => s + parseFloat(q.amountTTC || "0"), 0);
-    const factureTTC = chInvoices.reduce((s, i) => s + parseFloat(i.amountTTC || "0"), 0);
-    const encaisseTTC = chInvoices.reduce((s, i) => s + parseFloat(i.amountPaid || "0"), 0);
+    const chQuotes = quotes.filter((q: any) => q.chantier_id === chId);
+    const chInvoices = invoices.filter((i: any) => i.chantier_id === chId && i.type !== "avoir");
+    const deviseTTC = chQuotes.filter((q: any) => q.status === "signé").reduce((s: number, q: any) => s + parseFloat(q.amount_ttc || "0"), 0);
+    const factureTTC = chInvoices.reduce((s: number, i: any) => s + parseFloat(i.amount_ttc || "0"), 0);
+    const encaisseTTC = chInvoices.reduce((s: number, i: any) => s + parseFloat(i.amount_paid || "0"), 0);
     return { deviseTTC, factureTTC, encaisseTTC, quotes: chQuotes, invoices: chInvoices };
   }
 
@@ -60,18 +61,18 @@ export default function ChantiersPage() {
   });
 
   const createMut = useMutation({
-    mutationFn: async (data: any) => apiRequest("POST", "/api/chantiers", data),
+    mutationFn: async (data: any) => db.createChantier(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/chantiers"] });
+      queryClient.invalidateQueries({ queryKey: ["chantiers"] });
       setOpen(false);
       toast({ title: "Chantier créé" });
     },
   });
 
   const updateMut = useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: any }) => apiRequest("PATCH", `/api/chantiers/${id}`, data),
+    mutationFn: async ({ id, data }: { id: number; data: any }) => db.updateChantier(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/chantiers"] });
+      queryClient.invalidateQueries({ queryKey: ["chantiers"] });
       toast({ title: "Chantier mis à jour" });
     },
   });
@@ -80,7 +81,7 @@ export default function ChantiersPage() {
     e.preventDefault();
     const ref = `CH-2026-${String(chantiers.length + 1).padStart(3, "0")}`;
     createMut.mutate({
-      contactId: Number(form.contactId),
+      contact_id: Number(form.contactId),
       reference: ref,
       title: form.title,
       status: "prospect",
@@ -88,18 +89,18 @@ export default function ChantiersPage() {
       priority: form.priority,
       address: form.address || null,
       city: form.city || null,
-      postalCode: form.postalCode || null,
-      estimatedAmountHT: form.estimatedAmountHT || "0",
-      startDate: form.startDate || null,
-      endDate: form.endDate || null,
+      postal_code: form.postalCode || null,
+      estimated_amount_ht: form.estimatedAmountHT || "0",
+      start_date: form.startDate || null,
+      end_date: form.endDate || null,
       description: form.description || null,
     });
   }
 
-  const filtered = chantiers.filter(ch => {
+  const filtered = chantiers.filter((ch: any) => {
     if (filterStatus !== "all" && ch.status !== filterStatus) return false;
     if (search) {
-      const c = contactMap.get(ch.contactId);
+      const c = contactMap.get(ch.contact_id);
       const cName = c ? contactName(c).toLowerCase() : "";
       const term = search.toLowerCase();
       return ch.reference.toLowerCase().includes(term) || ch.title.toLowerCase().includes(term) || cName.includes(term);
@@ -139,11 +140,11 @@ export default function ChantiersPage() {
 
       {/* Chantier Detail View */}
       {detailId && (() => {
-        const ch = chantiers.find(c => c.id === detailId);
+        const ch = chantiers.find((c: any) => c.id === detailId);
         if (!ch) return null;
-        const c = contactMap.get(ch.contactId);
+        const c = contactMap.get(ch.contact_id);
         const fin = getChantierFinancials(ch.id);
-        const pct = ch.completionPercent || 0;
+        const pct = ch.completion_percent || 0;
         const margin = ch.margin ? parseFloat(ch.margin) : null;
         const maxFin = Math.max(fin.deviseTTC, fin.factureTTC, fin.encaisseTTC, 1);
         return (
@@ -192,7 +193,7 @@ export default function ChantiersPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div><div className="text-xs text-muted-foreground">Client</div><div className="text-sm font-medium">{c ? contactName(c) : "—"}</div></div>
                     <div><div className="text-xs text-muted-foreground">Adresse</div><div className="text-sm">{ch.address || "—"}{ch.city ? `, ${ch.city}` : ""}</div></div>
-                    <div><div className="text-xs text-muted-foreground">Dates</div><div className="text-sm">{formatDate(ch.startDate)} → {formatDate(ch.endDate)}</div></div>
+                    <div><div className="text-xs text-muted-foreground">Dates</div><div className="text-sm">{formatDate(ch.start_date)} → {formatDate(ch.end_date)}</div></div>
                     <div><div className="text-xs text-muted-foreground">Type / Priorité</div><div className="text-sm capitalize">{ch.type || "—"} · {ch.priority || "normale"}</div></div>
                   </div>
                   <div className="pt-3 border-t border-border/50">
@@ -202,8 +203,8 @@ export default function ChantiersPage() {
                     <Progress value={pct} className="h-2" />
                   </div>
                   <div className="grid grid-cols-3 gap-3 pt-3 border-t border-border/50">
-                    <div><div className="text-xs text-muted-foreground">Budget HT</div><div className="text-sm font-medium">{formatCurrency(ch.estimatedAmountHT)}</div></div>
-                    <div><div className="text-xs text-muted-foreground">Réalisé HT</div><div className="text-sm font-medium">{formatCurrency(ch.actualAmountHT)}</div></div>
+                    <div><div className="text-xs text-muted-foreground">Budget HT</div><div className="text-sm font-medium">{formatCurrency(ch.estimated_amount_ht)}</div></div>
+                    <div><div className="text-xs text-muted-foreground">Réalisé HT</div><div className="text-sm font-medium">{formatCurrency(ch.actual_amount_ht)}</div></div>
                     {margin !== null && (
                       <div><div className="text-xs text-muted-foreground">Marge</div>
                         <div className={`text-sm font-medium ${margin >= 40 ? "text-emerald-400" : margin >= 20 ? "text-amber-400" : "text-red-400"}`}>{formatPercent(margin)}</div>
@@ -226,22 +227,22 @@ export default function ChantiersPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {fin.quotes.map(q => (
+                      {fin.quotes.map((q: any) => (
                         <tr key={`q-${q.id}`} className="border-b border-border/50 hover:bg-muted/30">
                           <td className="py-2.5 px-4"><Badge variant="outline" className="text-[10px]">Devis</Badge></td>
                           <td className="py-2.5 px-4 font-mono text-xs">{q.number}</td>
                           <td className="py-2.5 px-4"><StatusBadge status={q.status} /></td>
-                          <td className="py-2.5 px-4 text-right font-medium">{formatCurrency(q.amountTTC)}</td>
+                          <td className="py-2.5 px-4 text-right font-medium">{formatCurrency(q.amount_ttc)}</td>
                           <td className="py-2.5 px-4 text-right text-muted-foreground">—</td>
                         </tr>
                       ))}
-                      {fin.invoices.map(inv => (
+                      {fin.invoices.map((inv: any) => (
                         <tr key={`i-${inv.id}`} className="border-b border-border/50 hover:bg-muted/30">
                           <td className="py-2.5 px-4"><Badge variant="outline" className="text-[10px] capitalize">{inv.type}</Badge></td>
                           <td className="py-2.5 px-4 font-mono text-xs">{inv.number}</td>
                           <td className="py-2.5 px-4"><StatusBadge status={inv.status} /></td>
-                          <td className="py-2.5 px-4 text-right font-medium">{formatCurrency(inv.amountTTC)}</td>
-                          <td className="py-2.5 px-4 text-right text-emerald-400">{formatCurrency(inv.amountPaid)}</td>
+                          <td className="py-2.5 px-4 text-right font-medium">{formatCurrency(inv.amount_ttc)}</td>
+                          <td className="py-2.5 px-4 text-right text-emerald-400">{formatCurrency(inv.amount_paid)}</td>
                         </tr>
                       ))}
                       {fin.quotes.length + fin.invoices.length === 0 && (
@@ -259,9 +260,9 @@ export default function ChantiersPage() {
       {/* Chantier Cards */}
       {!detailId && (
       <div className="grid gap-3">
-        {filtered.map(ch => {
-          const c = contactMap.get(ch.contactId);
-          const pct = ch.completionPercent || 0;
+        {filtered.map((ch: any) => {
+          const c = contactMap.get(ch.contact_id);
+          const pct = ch.completion_percent || 0;
           const margin = ch.margin ? parseFloat(ch.margin) : null;
           const fin = getChantierFinancials(ch.id);
           const maxFin = Math.max(fin.deviseTTC, fin.factureTTC, fin.encaisseTTC, 1);
@@ -293,7 +294,7 @@ export default function ChantiersPage() {
                         <DropdownMenuItem onClick={() => updateMut.mutate({ id: ch.id, data: { status: "en_cours" } })}>Démarrer</DropdownMenuItem>
                       )}
                       {ch.status === "en_cours" && (
-                        <DropdownMenuItem onClick={() => updateMut.mutate({ id: ch.id, data: { status: "terminé", completionPercent: 100 } })}>Terminer</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => updateMut.mutate({ id: ch.id, data: { status: "terminé", completion_percent: 100 } })}>Terminer</DropdownMenuItem>
                       )}
                       {ch.status === "terminé" && (
                         <DropdownMenuItem onClick={() => updateMut.mutate({ id: ch.id, data: { status: "facturé" } })}>Marquer facturé</DropdownMenuItem>
@@ -339,7 +340,7 @@ export default function ChantiersPage() {
                   </div>
                   <div className="text-right shrink-0">
                     <div className="text-xs text-muted-foreground">Budget HT</div>
-                    <div className="text-sm font-medium">{formatCurrency(ch.estimatedAmountHT)}</div>
+                    <div className="text-sm font-medium">{formatCurrency(ch.estimated_amount_ht)}</div>
                   </div>
                   {margin !== null && (
                     <div className="text-right shrink-0">
@@ -349,7 +350,7 @@ export default function ChantiersPage() {
                   )}
                   <div className="text-right shrink-0">
                     <div className="text-xs text-muted-foreground">Dates</div>
-                    <div className="text-xs">{formatDate(ch.startDate)} → {formatDate(ch.endDate)}</div>
+                    <div className="text-xs">{formatDate(ch.start_date)} → {formatDate(ch.end_date)}</div>
                   </div>
                 </div>
 
@@ -378,7 +379,7 @@ export default function ChantiersPage() {
               <Select value={form.contactId} onValueChange={v => setForm(f => ({ ...f, contactId: v }))}>
                 <SelectTrigger><SelectValue placeholder="Sélectionner un client" /></SelectTrigger>
                 <SelectContent>
-                  {clients.map(c => (
+                  {clients.map((c: any) => (
                     <SelectItem key={c.id} value={String(c.id)}>{contactName(c)}{c.company ? ` — ${c.company}` : ""}</SelectItem>
                   ))}
                 </SelectContent>

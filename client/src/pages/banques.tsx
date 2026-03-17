@@ -6,12 +6,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient } from "@/lib/queryClient";
+import { db } from "@/lib/supabaseData";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { useToast } from "@/hooks/use-toast";
 import { Search, Link2, CheckCircle2, Circle, ArrowUpRight, ArrowDownLeft, Landmark, Plus, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import type { BankTransaction, BankAccount } from "@shared/schema";
 
 const ACCOUNT_COLORS = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899", "#06B6D4", "#84CC16"];
 
@@ -24,21 +24,21 @@ export default function BanquesPage() {
   });
   const { toast } = useToast();
 
-  const { data: bankAccounts = [] } = useQuery<BankAccount[]>({ queryKey: ["/api/bank-accounts"] });
-  const { data: transactions = [] } = useQuery<BankTransaction[]>({ queryKey: ["/api/bank-transactions"] });
+  const { data: bankAccounts = [] } = useQuery<any[]>({ queryKey: ["bank-accounts"], queryFn: () => db.getBankAccounts() });
+  const { data: transactions = [] } = useQuery<any[]>({ queryKey: ["bank-transactions"], queryFn: () => db.getBankTransactions() });
 
   const updateMut = useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: any }) => apiRequest("PATCH", `/api/bank-transactions/${id}`, data),
+    mutationFn: async ({ id, data }: { id: number; data: any }) => db.updateBankTransaction(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/bank-transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["bank-transactions"] });
       toast({ title: "Transaction mise à jour" });
     },
   });
 
   const createAccountMut = useMutation({
-    mutationFn: async (data: any) => apiRequest("POST", "/api/bank-accounts", data),
+    mutationFn: async (data: any) => db.createBankAccount(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/bank-accounts"] });
+      queryClient.invalidateQueries({ queryKey: ["bank-accounts"] });
       setAddAccountOpen(false);
       toast({ title: "Compte ajouté" });
       setAccountForm({ bankName: "", accountName: "", iban: "", bic: "", color: ACCOUNT_COLORS[0] });
@@ -46,10 +46,10 @@ export default function BanquesPage() {
   });
 
   const syncAccountMut = useMutation({
-    mutationFn: async (id: number) => apiRequest("PATCH", `/api/bank-accounts/${id}`, { lastSyncAt: new Date().toISOString() }),
+    mutationFn: async (id: number) => db.updateBankAccount(id, { last_sync_at: new Date().toISOString() }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/bank-accounts"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/bank-transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["bank-accounts"] });
+      queryClient.invalidateQueries({ queryKey: ["bank-transactions"] });
       toast({ title: "Synchronisation lancée" });
     },
   });
@@ -57,7 +57,7 @@ export default function BanquesPage() {
   // Filter transactions by active bank account
   const activeAccount = activeAccountId ? bankAccounts.find(a => a.id === activeAccountId) : null;
   const accountFiltered = activeAccount
-    ? transactions.filter(t => t.bankName === activeAccount.bankName)
+    ? transactions.filter(t => t.bank_name === activeAccount.bank_name)
     : transactions;
 
   const filtered = accountFiltered.filter(t => {
@@ -76,15 +76,15 @@ export default function BanquesPage() {
   function handleAddAccount(e: React.FormEvent) {
     e.preventDefault();
     createAccountMut.mutate({
-      bankName: accountForm.bankName,
-      accountName: accountForm.accountName,
+      bank_name: accountForm.bankName,
+      account_name: accountForm.accountName,
       iban: accountForm.iban || null,
       bic: accountForm.bic || null,
       balance: "0",
       currency: "EUR",
       status: "connected",
       color: accountForm.color,
-      isDefault: bankAccounts.length === 0,
+      is_default: bankAccounts.length === 0,
     });
   }
 
@@ -123,7 +123,7 @@ export default function BanquesPage() {
               data-testid={`bank-account-${account.id}`}
             >
               <div className="flex items-center justify-between">
-                <div className="text-[10px] text-muted-foreground uppercase tracking-wider">{account.bankName}</div>
+                <div className="text-[10px] text-muted-foreground uppercase tracking-wider">{account.bank_name}</div>
                 {account.status === "connected" && (
                   <Badge variant="outline" className="text-[8px] border-0 bg-emerald-500/10 text-emerald-400 px-1 py-0">Connecté</Badge>
                 )}
@@ -134,11 +134,11 @@ export default function BanquesPage() {
                   <Badge variant="outline" className="text-[8px] border-0 bg-amber-500/10 text-amber-400 px-1 py-0">En attente</Badge>
                 )}
               </div>
-              <div className="text-xs text-muted-foreground mt-0.5">{account.accountName}</div>
+              <div className="text-xs text-muted-foreground mt-0.5">{account.account_name}</div>
               <div className="text-sm font-bold mt-1">{formatCurrency(account.balance)}</div>
               <div className="flex items-center justify-between mt-1">
                 <div className="text-[10px] text-muted-foreground">
-                  {account.lastSyncAt ? `Sync ${formatDate(account.lastSyncAt)}` : "Jamais synchronisé"}
+                  {account.last_sync_at ? `Sync ${formatDate(account.last_sync_at)}` : "Jamais synchronisé"}
                 </div>
                 {account.status === "connected" && (
                   <Button
@@ -170,8 +170,8 @@ export default function BanquesPage() {
         {activeAccount && (
           <div className="flex items-center gap-2 bg-card border border-border rounded-lg px-3 py-2" style={{ borderLeftWidth: 3, borderLeftColor: activeAccount.color || "#3B82F6" }}>
             <Landmark className="size-4 text-primary" />
-            <span className="text-sm font-medium">{activeAccount.bankName}</span>
-            <span className="text-xs text-muted-foreground">— {activeAccount.accountName}</span>
+            <span className="text-sm font-medium">{activeAccount.bank_name}</span>
+            <span className="text-xs text-muted-foreground">— {activeAccount.account_name}</span>
           </div>
         )}
         <div className="relative flex-1 max-w-xs">
