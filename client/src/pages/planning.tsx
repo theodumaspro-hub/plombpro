@@ -40,8 +40,8 @@ export default function PlanningPage() {
   const people = resources.filter(r => r.type !== "materiel");
 
   const [form, setForm] = useState({
-    title: "", type: "intervention", date: "", startTime: "08:00", endTime: "17:00",
-    resourceId: "", contactId: "", chantierId: "", address: "", city: "", notes: "",
+    title: "", type: "intervention", date: "", start_time: "08:00", end_time: "17:00",
+    resource_id: "", contact_id: "", chantier_id: "", address: "", city: "", notes: "",
   });
 
   const createMut = useMutation({
@@ -59,11 +59,11 @@ export default function PlanningPage() {
       title: form.title,
       type: form.type,
       date: form.date,
-      start_time: form.startTime,
-      end_time: form.endTime,
-      resource_id: form.resourceId ? Number(form.resourceId) : null,
-      contact_id: form.contactId ? Number(form.contactId) : null,
-      chantier_id: form.chantierId ? Number(form.chantierId) : null,
+      start_time: form.start_time,
+      end_time: form.end_time,
+      resource_id: form.resource_id ? Number(form.resource_id) : null,
+      contact_id: form.contact_id ? Number(form.contact_id) : null,
+      chantier_id: form.chantier_id ? Number(form.chantier_id) : null,
       status: "planifié",
       address: form.address || null,
       city: form.city || null,
@@ -138,7 +138,7 @@ export default function PlanningPage() {
                             <h3 className="text-sm font-medium mt-1">{appt.title}</h3>
                             <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                               {r && <span className="flex items-center gap-1"><User className="size-3" />{r.name}</span>}
-                              {c && <span>{contactName({ firstName: c.first_name, lastName: c.last_name, company: c.company })}</span>}
+                              {c && <span>{contactName({ first_name: c.first_name, last_name: c.last_name, company: c.company })}</span>}
                               {appt.city && <span className="flex items-center gap-1"><MapPin className="size-3" />{appt.city}</span>}
                             </div>
                           </div>
@@ -181,12 +181,12 @@ export default function PlanningPage() {
               <div><Label>Date *</Label><Input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} required /></div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Début</Label><Input type="time" value={form.startTime} onChange={e => setForm(f => ({ ...f, startTime: e.target.value }))} /></div>
-              <div><Label>Fin</Label><Input type="time" value={form.endTime} onChange={e => setForm(f => ({ ...f, endTime: e.target.value }))} /></div>
+              <div><Label>Début</Label><Input type="time" value={form.start_time} onChange={e => setForm(f => ({ ...f, start_time: e.target.value }))} /></div>
+              <div><Label>Fin</Label><Input type="time" value={form.end_time} onChange={e => setForm(f => ({ ...f, end_time: e.target.value }))} /></div>
             </div>
             <div>
               <Label>Technicien</Label>
-              <Select value={form.resourceId} onValueChange={v => setForm(f => ({ ...f, resourceId: v }))}>
+              <Select value={form.resource_id} onValueChange={v => setForm(f => ({ ...f, resource_id: v }))}>
                 <SelectTrigger><SelectValue placeholder="Aucun" /></SelectTrigger>
                 <SelectContent>
                   {people.map(r => (
@@ -197,11 +197,11 @@ export default function PlanningPage() {
             </div>
             <div>
               <Label>Client</Label>
-              <Select value={form.contactId} onValueChange={v => setForm(f => ({ ...f, contactId: v }))}>
+              <Select value={form.contact_id} onValueChange={v => setForm(f => ({ ...f, contact_id: v }))}>
                 <SelectTrigger><SelectValue placeholder="Aucun" /></SelectTrigger>
                 <SelectContent>
                   {contacts.filter(c => c.type === "client").map(c => (
-                    <SelectItem key={c.id} value={String(c.id)}>{contactName({ firstName: c.first_name, lastName: c.last_name, company: c.company })}</SelectItem>
+                    <SelectItem key={c.id} value={String(c.id)}>{contactName({ first_name: c.first_name, last_name: c.last_name, company: c.company })}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

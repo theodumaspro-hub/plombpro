@@ -46,7 +46,7 @@ export default function SuiviTempsPage() {
   const people = resources.filter(r => r.type !== "materiel");
 
   const [form, setForm] = useState({
-    resourceId: "", chantierId: "", date: "", startTime: "08:00", endTime: "17:00",
+    resource_id: "", chantier_id: "", date: "", start_time: "08:00", end_time: "17:00",
     type: "intervention", description: "", billable: true,
   });
 
@@ -56,7 +56,7 @@ export default function SuiviTempsPage() {
       queryClient.invalidateQueries({ queryKey: ["time-entries"] });
       setOpen(false);
       toast({ title: "Saisie enregistrée" });
-      setForm({ resourceId: "", chantierId: "", date: "", startTime: "08:00", endTime: "17:00", type: "intervention", description: "", billable: true });
+      setForm({ resource_id: "", chantier_id: "", date: "", start_time: "08:00", end_time: "17:00", type: "intervention", description: "", billable: true });
     },
   });
 
@@ -71,14 +71,14 @@ export default function SuiviTempsPage() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const dur = calcDuration(form.startTime, form.endTime);
+    const dur = calcDuration(form.start_time, form.end_time);
     createMut.mutate({
-      resource_id: Number(form.resourceId),
-      chantier_id: form.chantierId ? Number(form.chantierId) : null,
+      resource_id: Number(form.resource_id),
+      chantier_id: form.chantier_id ? Number(form.chantier_id) : null,
       appointment_id: null,
       date: form.date,
-      start_time: form.startTime,
-      end_time: form.endTime,
+      start_time: form.start_time,
+      end_time: form.end_time,
       duration: String(dur.toFixed(2)),
       type: form.type,
       description: form.description || null,
@@ -108,7 +108,7 @@ export default function SuiviTempsPage() {
   const nonBillableHours = weekEntries.filter(e => !e.billable).reduce((s, e) => s + parseFloat(e.duration || "0"), 0);
   const toValidateHours = entries.filter(e => !e.validated).reduce((s, e) => s + parseFloat(e.duration || "0"), 0);
 
-  const formDuration = calcDuration(form.startTime, form.endTime);
+  const formDuration = calcDuration(form.start_time, form.end_time);
 
   return (
     <AppLayout
@@ -224,7 +224,7 @@ export default function SuiviTempsPage() {
                       {r ? (
                         <div className="flex items-center gap-2">
                           <div className="size-6 rounded-full flex items-center justify-center text-[10px] font-semibold bg-primary/15 text-primary">
-                            {r.name.split(" ").map(w => w[0]).join("").slice(0, 2)}
+                            {r.name.split(" ").map((w: string) => w[0]).join("").slice(0, 2)}
                           </div>
                           <span className="text-xs">{r.name}</span>
                         </div>
@@ -276,7 +276,7 @@ export default function SuiviTempsPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <Label>Technicien *</Label>
-              <Select value={form.resourceId} onValueChange={v => setForm(f => ({ ...f, resourceId: v }))}>
+              <Select value={form.resource_id} onValueChange={v => setForm(f => ({ ...f, resource_id: v }))}>
                 <SelectTrigger><SelectValue placeholder="Sélectionner" /></SelectTrigger>
                 <SelectContent>
                   {people.map(r => (
@@ -287,7 +287,7 @@ export default function SuiviTempsPage() {
             </div>
             <div>
               <Label>Chantier</Label>
-              <Select value={form.chantierId} onValueChange={v => setForm(f => ({ ...f, chantierId: v }))}>
+              <Select value={form.chantier_id} onValueChange={v => setForm(f => ({ ...f, chantier_id: v }))}>
                 <SelectTrigger><SelectValue placeholder="Aucun" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">Aucun</SelectItem>
@@ -299,10 +299,10 @@ export default function SuiviTempsPage() {
             </div>
             <div><Label>Date *</Label><Input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} required data-testid="input-time-date" /></div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Début</Label><Input type="time" value={form.startTime} onChange={e => setForm(f => ({ ...f, startTime: e.target.value }))} data-testid="input-time-start" /></div>
-              <div><Label>Fin</Label><Input type="time" value={form.endTime} onChange={e => setForm(f => ({ ...f, endTime: e.target.value }))} data-testid="input-time-end" /></div>
+              <div><Label>Début</Label><Input type="time" value={form.start_time} onChange={e => setForm(f => ({ ...f, start_time: e.target.value }))} data-testid="input-time-start" /></div>
+              <div><Label>Fin</Label><Input type="time" value={form.end_time} onChange={e => setForm(f => ({ ...f, end_time: e.target.value }))} data-testid="input-time-end" /></div>
             </div>
-            {form.startTime && form.endTime && (
+            {form.start_time && form.end_time && (
               <div className="text-xs text-muted-foreground flex items-center gap-1.5">
                 <Clock className="size-3" />
                 Durée calculée : <span className="font-medium text-foreground tabular-nums lining-nums">{formDuration.toFixed(1)} h</span>
@@ -335,7 +335,7 @@ export default function SuiviTempsPage() {
             </div>
             <DialogFooter>
               <Button type="button" variant="secondary" onClick={() => setOpen(false)}>Annuler</Button>
-              <Button type="submit" disabled={createMut.isPending || !form.resourceId || !form.date} data-testid="btn-submit-time-entry">
+              <Button type="submit" disabled={createMut.isPending || !form.resource_id || !form.date} data-testid="btn-submit-time-entry">
                 {createMut.isPending ? "Enregistrement..." : "Enregistrer"}
               </Button>
             </DialogFooter>

@@ -132,7 +132,7 @@ export default function PilotagePage() {
         const c = contacts.find(ct => ct.id === inv.contact_id);
         byContact[inv.contact_id] = {
           contact_id: inv.contact_id,
-          name: c ? contactName({ firstName: c.first_name, lastName: c.last_name, company: c.company }) : `Contact #${inv.contact_id}`,
+          name: c ? contactName({ first_name: c.first_name, last_name: c.last_name, company: c.company }) : `Contact #${inv.contact_id}`,
           amount: 0,
         };
       }
@@ -414,7 +414,7 @@ export default function PilotagePage() {
                 <div key={c.id} className="flex items-center justify-between py-1.5" data-testid={`top-client-${c.id}`}>
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-muted-foreground w-5">{i + 1}.</span>
-                    <span className="text-sm font-medium">{contactName({ firstName: c.first_name, lastName: c.last_name, company: c.company })}</span>
+                    <span className="text-sm font-medium">{contactName({ first_name: c.first_name, last_name: c.last_name, company: c.company })}</span>
                     {c.company && <span className="text-xs text-muted-foreground">{c.company}</span>}
                   </div>
                   <span className="text-sm font-medium">{formatCurrency(c.total_billed)}</span>

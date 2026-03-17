@@ -58,19 +58,23 @@ function AppRouter() {
 
   // Determine view based on auth + company state
   useEffect(() => {
+    console.log('[APP] useEffect: isAuthed=', isAuthed, 'companyLoading=', companyLoading, 'company=', company);
     if (!isAuthed) return;
     if (companyLoading) return;
 
     if (company) {
       if (!company.onboarding_completed) {
+        console.log('[APP] -> setView onboarding (not completed)');
         setView("onboarding");
       } else if (company.plan === "free" || !company.plan) {
+        console.log('[APP] -> setView subscription (free/no plan)');
         setView("subscription");
       } else {
+        console.log('[APP] -> setView app (plan=', company.plan, ')');
         setView("app");
       }
     } else {
-      // No company settings yet → go to onboarding
+      console.log('[APP] -> setView onboarding (no company)');
       setView("onboarding");
     }
   }, [isAuthed, company, companyLoading]);
@@ -85,11 +89,11 @@ function AppRouter() {
   }, []);
 
   const handleAuth = useCallback(() => {
+    console.log('[APP] handleAuth called! Setting isAuthed=true');
     setIsAuthed(true);
     queryClient.invalidateQueries({ queryKey: ["company"] });
     window.location.hash = "#/";
-    // View will be determined by the useEffect once company data loads
-    setView("onboarding"); // temporary — will be overridden by useEffect
+    setView("onboarding");
   }, []);
 
   const handleLogout = useCallback(async () => {

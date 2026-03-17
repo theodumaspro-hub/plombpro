@@ -53,14 +53,14 @@ export default function BibliothequePage() {
 
   // Inline creation form
   const [form, setForm] = useState({
-    type: "fourniture", family: "", subFamily: "", reference: "",
+    type: "fourniture", family: "", sub_family: "", reference: "",
     designation: "", description: "", unit: "u",
-    purchasePriceHT: "", sellingPriceHT: "", tvaRate: "20",
+    purchase_price_ht: "", selling_price_ht: "", tva_rate: "20",
   });
 
   // Auto-calculated margin for creation form
-  const formPurchase = parseFloat(form.purchasePriceHT) || 0;
-  const formSelling = parseFloat(form.sellingPriceHT) || 0;
+  const formPurchase = parseFloat(form.purchase_price_ht) || 0;
+  const formSelling = parseFloat(form.selling_price_ht) || 0;
   const formCoeff = formPurchase > 0 ? (formSelling / formPurchase).toFixed(2) : "—";
   const formMargin = formPurchase > 0 ? (((formSelling - formPurchase) / formPurchase) * 100).toFixed(1) : "—";
 
@@ -70,7 +70,7 @@ export default function BibliothequePage() {
       queryClient.invalidateQueries({ queryKey: ["library"] });
       setOpen(false);
       toast({ title: "Article ajouté" });
-      setForm({ type: "fourniture", family: "", subFamily: "", reference: "", designation: "", description: "", unit: "u", purchasePriceHT: "", sellingPriceHT: "", tvaRate: "20" });
+      setForm({ type: "fourniture", family: "", sub_family: "", reference: "", designation: "", description: "", unit: "u", purchase_price_ht: "", selling_price_ht: "", tva_rate: "20" });
     },
   });
 
@@ -84,21 +84,21 @@ export default function BibliothequePage() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const purchase = parseFloat(form.purchasePriceHT) || 0;
-    const selling = parseFloat(form.sellingPriceHT) || 0;
+    const purchase = parseFloat(form.purchase_price_ht) || 0;
+    const selling = parseFloat(form.selling_price_ht) || 0;
     const marginPct = purchase > 0 ? ((selling - purchase) / purchase * 100).toFixed(1) : null;
     createMut.mutate({
       type: form.type,
       family: form.family,
-      sub_family: form.subFamily || null,
+      sub_family: form.sub_family || null,
       reference: form.reference || null,
       designation: form.designation,
       description: form.description || null,
       unit: form.unit,
-      purchase_price_ht: form.purchasePriceHT || null,
-      selling_price_ht: form.sellingPriceHT || "0",
+      purchase_price_ht: form.purchase_price_ht || null,
+      selling_price_ht: form.selling_price_ht || "0",
       margin_percent: marginPct,
-      tva_rate: form.tvaRate,
+      tva_rate: form.tva_rate,
     });
   }
 
@@ -291,7 +291,7 @@ export default function BibliothequePage() {
                   <Input className="mt-1" value={form.family} onChange={e => setForm(f => ({ ...f, family: e.target.value }))} placeholder="Ex: Sanitaire" />
                 )}
               </div>
-              <div><Label>Sous-famille</Label><Input value={form.subFamily} onChange={e => setForm(f => ({ ...f, subFamily: e.target.value }))} placeholder="Ex: Robinetterie" /></div>
+              <div><Label>Sous-famille</Label><Input value={form.sub_family} onChange={e => setForm(f => ({ ...f, sub_family: e.target.value }))} placeholder="Ex: Robinetterie" /></div>
             </div>
             <div className="grid grid-cols-3 gap-3">
               <div>
@@ -305,8 +305,8 @@ export default function BibliothequePage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div><Label>Prix achat HT</Label><Input type="number" step="0.01" value={form.purchasePriceHT} onChange={e => setForm(f => ({ ...f, purchasePriceHT: e.target.value }))} /></div>
-              <div><Label>Prix vente HT *</Label><Input type="number" step="0.01" value={form.sellingPriceHT} onChange={e => setForm(f => ({ ...f, sellingPriceHT: e.target.value }))} required /></div>
+              <div><Label>Prix achat HT</Label><Input type="number" step="0.01" value={form.purchase_price_ht} onChange={e => setForm(f => ({ ...f, purchase_price_ht: e.target.value }))} /></div>
+              <div><Label>Prix vente HT *</Label><Input type="number" step="0.01" value={form.selling_price_ht} onChange={e => setForm(f => ({ ...f, selling_price_ht: e.target.value }))} required /></div>
             </div>
             {/* Auto-calc margin preview */}
             {formPurchase > 0 && formSelling > 0 && (
@@ -317,7 +317,7 @@ export default function BibliothequePage() {
             )}
             <div>
               <Label>TVA (%)</Label>
-              <Select value={form.tvaRate} onValueChange={v => setForm(f => ({ ...f, tvaRate: v }))}>
+              <Select value={form.tva_rate} onValueChange={v => setForm(f => ({ ...f, tva_rate: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="20">20%</SelectItem>

@@ -31,20 +31,20 @@ interface LineItem {
   description: string;
   quantity: string;
   unit: string;
-  unitPriceHT: string;
-  tvaRate: string;
-  isTitle: boolean;
-  isSubtotal: boolean;
-  lineType: LineType;
-  purchasePriceHT: string;
+  unit_price_ht: string;
+  tva_rate: string;
+  is_title: boolean;
+  is_subtotal: boolean;
+  line_type: LineType;
+  purchase_price_ht: string;
   coefficient: string;
-  marginPercent: string;
+  margin_percent: string;
 }
 
 const EMPTY_LINE: LineItem = {
   designation: "", description: "", quantity: "1", unit: "u",
-  unitPriceHT: "0", tvaRate: "10", isTitle: false, isSubtotal: false,
-  lineType: "fourniture", purchasePriceHT: "", coefficient: "", marginPercent: "",
+  unit_price_ht: "0", tva_rate: "10", is_title: false, is_subtotal: false,
+  line_type: "fourniture", purchase_price_ht: "", coefficient: "", margin_percent: "",
 };
 
 const LINE_TYPES: { value: LineType; label: string; color: string; icon: typeof Package }[] = [
@@ -108,13 +108,13 @@ function DevisPDFPreview({
 }) {
   const printRef = useRef<HTMLDivElement>(null);
 
-  const dataLines = lines.filter(l => !l.isTitle && !l.isSubtotal);
+  const dataLines = lines.filter(l => !l.is_title && !l.is_subtotal);
   const totalHT = dataLines
-    .reduce((s, l) => s + (parseFloat(l.quantity || "1") * parseFloat(l.unitPriceHT || "0")), 0);
+    .reduce((s, l) => s + (parseFloat(l.quantity || "1") * parseFloat(l.unit_price_ht || "0")), 0);
   const totalTVA = dataLines
     .reduce((s, l) => {
-      const ht = parseFloat(l.quantity || "1") * parseFloat(l.unitPriceHT || "0");
-      return s + ht * (parseFloat(l.tvaRate || "20") / 100);
+      const ht = parseFloat(l.quantity || "1") * parseFloat(l.unit_price_ht || "0");
+      return s + ht * (parseFloat(l.tva_rate || "20") / 100);
     }, 0);
 
   // Global adjustments
@@ -129,22 +129,22 @@ function DevisPDFPreview({
 
   // Margin totals for ventilation
   const totalPurchaseHT = dataLines
-    .reduce((s, l) => s + (parseFloat(l.quantity || "0") * parseFloat(l.purchasePriceHT || "0")), 0);
+    .reduce((s, l) => s + (parseFloat(l.quantity || "0") * parseFloat(l.purchase_price_ht || "0")), 0);
   const margeBruteHT = pdfFinalHT - totalPurchaseHT;
 
   // HT by line type for ventilation
   const htByType: Record<string, number> = {};
   dataLines.forEach(l => {
-    const lt = l.lineType || "divers";
-    const ht = parseFloat(l.quantity || "1") * parseFloat(l.unitPriceHT || "0");
+    const lt = l.line_type || "divers";
+    const ht = parseFloat(l.quantity || "1") * parseFloat(l.unit_price_ht || "0");
     htByType[lt] = (htByType[lt] || 0) + ht;
   });
 
   // Group TVA by rate
   const tvaGroups: Record<string, { base: number; tva: number }> = {};
   dataLines.forEach(l => {
-    const rate = l.tvaRate || "20";
-    const ht = parseFloat(l.quantity || "1") * parseFloat(l.unitPriceHT || "0");
+    const rate = l.tva_rate || "20";
+    const ht = parseFloat(l.quantity || "1") * parseFloat(l.unit_price_ht || "0");
     if (!tvaGroups[rate]) tvaGroups[rate] = { base: 0, tva: 0 };
     tvaGroups[rate].base += ht;
     tvaGroups[rate].tva += ht * (parseFloat(rate) / 100);
@@ -252,7 +252,7 @@ function DevisPDFPreview({
             <div className="party client-box" style={{ flex: 1, padding: 12, borderRadius: 6, background: "#f8f8f8", border: "1px solid #e0e0e0" }}>
               <div className="party-label" style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: 1, color: "#999", marginBottom: 6 }}>Client</div>
               <div className="party-name" style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>
-                {contact ? contactName({ firstName: contact.first_name, lastName: contact.last_name, company: contact.company } as any) : "—"}
+                {contact ? contactName({ first_name: contact.first_name, last_name: contact.last_name, company: contact.company }) : "—"}
               </div>
               {contact?.company && <div style={{ fontSize: 10.5 }}>{contact.company}</div>}
               {contact?.address && <div style={{ fontSize: 10.5, color: "#555" }}>{contact.address}</div>}
@@ -299,7 +299,7 @@ function DevisPDFPreview({
             </thead>
             <tbody>
               {lines.map((line, i) => {
-                if (line.isTitle) {
+                if (line.is_title) {
                   return (
                     <tr key={i} className="title-row">
                       <td colSpan={6} className="section-title" style={{ fontWeight: 700, background: "#f5f5f5", fontSize: 12, padding: "10px 10px 7px", borderBottom: "1px solid #eee", borderLeft: "3px solid #C87941", paddingLeft: 12 }}>
@@ -308,15 +308,15 @@ function DevisPDFPreview({
                     </tr>
                   );
                 }
-                if (line.isSubtotal) {
+                if (line.is_subtotal) {
                   const prevLines: LineItem[] = [];
                   let sectionName = "";
                   for (let j = i - 1; j >= 0; j--) {
-                    if (lines[j].isTitle) { sectionName = lines[j].designation; break; }
-                    if (lines[j].isSubtotal) break;
+                    if (lines[j].is_title) { sectionName = lines[j].designation; break; }
+                    if (lines[j].is_subtotal) break;
                     prevLines.push(lines[j]);
                   }
-                  const sub = prevLines.reduce((s, l) => s + (parseFloat(l.quantity || "1") * parseFloat(l.unitPriceHT || "0")), 0);
+                  const sub = prevLines.reduce((s, l) => s + (parseFloat(l.quantity || "1") * parseFloat(l.unit_price_ht || "0")), 0);
                   return (
                     <tr key={i} className="subtotal-row">
                       <td colSpan={5} style={{ fontWeight: 600, borderTop: "2px solid #ddd", padding: "7px 10px", textAlign: "right", fontSize: 10.5 }}>
@@ -328,8 +328,8 @@ function DevisPDFPreview({
                     </tr>
                   );
                 }
-                const lineTotal = parseFloat(line.quantity || "1") * parseFloat(line.unitPriceHT || "0");
-                const lt = LINE_TYPE_MAP[line.lineType];
+                const lineTotal = parseFloat(line.quantity || "1") * parseFloat(line.unit_price_ht || "0");
+                const lt = LINE_TYPE_MAP[line.line_type];
                 return (
                   <tr key={i}>
                     <td style={{ padding: "7px 10px", borderBottom: "1px solid #eee", fontSize: 10.5 }}>
@@ -345,8 +345,8 @@ function DevisPDFPreview({
                     </td>
                     <td style={{ padding: "7px 10px", borderBottom: "1px solid #eee", fontSize: 10.5, textAlign: "right" }}>{parseFloat(line.quantity || "1")}</td>
                     <td style={{ padding: "7px 10px", borderBottom: "1px solid #eee", fontSize: 10.5 }}>{line.unit}</td>
-                    <td style={{ padding: "7px 10px", borderBottom: "1px solid #eee", fontSize: 10.5, textAlign: "right" }}>{parseFloat(line.unitPriceHT || "0").toFixed(2)} €</td>
-                    <td style={{ padding: "7px 10px", borderBottom: "1px solid #eee", fontSize: 10.5, textAlign: "right" }}>{line.tvaRate}%</td>
+                    <td style={{ padding: "7px 10px", borderBottom: "1px solid #eee", fontSize: 10.5, textAlign: "right" }}>{parseFloat(line.unit_price_ht || "0").toFixed(2)} €</td>
+                    <td style={{ padding: "7px 10px", borderBottom: "1px solid #eee", fontSize: 10.5, textAlign: "right" }}>{line.tva_rate}%</td>
                     <td style={{ padding: "7px 10px", borderBottom: "1px solid #eee", fontSize: 10.5, textAlign: "right", fontWeight: 500 }}>{lineTotal.toFixed(2)} €</td>
                   </tr>
                 );
@@ -500,10 +500,10 @@ function SendEmailDialog({
   const [phone, setPhone] = useState(contact?.phone || contact?.mobile || "");
   const [subject, setSubject] = useState(`Devis ${quote.number} — ${quote.title || ""}`);
   const [message, setMessage] = useState(
-    `Bonjour${contact ? ` ${contactName({ firstName: contact.first_name, lastName: contact.last_name, company: contact.company } as any)}` : ""},\n\nVeuillez trouver ci-joint notre devis n° ${quote.number}${quote.title ? ` pour ${quote.title}` : ""}.\n\nCe devis est valable ${quote.valid_until ? `jusqu'au ${formatDate(quote.valid_until)}` : "30 jours"}.\n\nN'hésitez pas à nous contacter pour toute question.\n\nCordialement,`
+    `Bonjour${contact ? ` ${contactName({ first_name: contact.first_name, last_name: contact.last_name, company: contact.company })}` : ""},\n\nVeuillez trouver ci-joint notre devis n° ${quote.number}${quote.title ? ` pour ${quote.title}` : ""}.\n\nCe devis est valable ${quote.valid_until ? `jusqu'au ${formatDate(quote.valid_until)}` : "30 jours"}.\n\nN'hésitez pas à nous contacter pour toute question.\n\nCordialement,`
   );
   const [waMessage, setWaMessage] = useState(
-    `Bonjour${contact ? ` ${contactName({ firstName: contact.first_name, lastName: contact.last_name, company: contact.company } as any)}` : ""}, voici le devis n° ${quote.number}${quote.title ? ` pour ${quote.title}` : ""} d'un montant de ${formatCurrency(parseFloat(quote.amount_ttc || "0"))}. N'hésitez pas à me contacter pour toute question.`
+    `Bonjour${contact ? ` ${contactName({ first_name: contact.first_name, last_name: contact.last_name, company: contact.company })}` : ""}, voici le devis n° ${quote.number}${quote.title ? ` pour ${quote.title}` : ""} d'un montant de ${formatCurrency(parseFloat(quote.amount_ttc || "0"))}. N'hésitez pas à me contacter pour toute question.`
   );
 
   // Integration status — stubbed (no server)
@@ -674,8 +674,8 @@ export default function DevisDetailPage() {
   const [facturerPercent, setFacturerPercent] = useState("30");
   const [facturerSituation, setFacturerSituation] = useState("1");
   const [quoteForm, setQuoteForm] = useState({
-    title: "", description: "", validUntil: "", notes: "", conditions: "Validité 30 jours. Acompte 30% à la commande.",
-    contactId: "", discountPercent: "",
+    title: "", description: "", valid_until: "", notes: "", conditions: "Validité 30 jours. Acompte 30% à la commande.",
+    contact_id: "", discount_percent: "",
   });
   const [headerFields, setHeaderFields] = useState({
     debutTravaux: "", dureeEstimee: "", visitePrealable: "",
@@ -714,11 +714,11 @@ export default function DevisDetailPage() {
       setQuoteForm({
         title: quote.title || "",
         description: quote.description || "",
-        validUntil: quote.valid_until || "",
+        valid_until: quote.valid_until || "",
         notes: quote.notes || "",
         conditions: quote.conditions || "Validité 30 jours. Acompte 30% à la commande.",
-        contactId: String(quote.contact_id || ""),
-        discountPercent: quote.discount_percent || "",
+        contact_id: String(quote.contact_id || ""),
+        discount_percent: quote.discount_percent || "",
       });
     }
   }, [quote]);
@@ -732,14 +732,14 @@ export default function DevisDetailPage() {
         description: l.description || "",
         quantity: String(l.quantity || "1"),
         unit: l.unit || "u",
-        unitPriceHT: String(l.unit_price_ht || "0"),
-        tvaRate: String(l.tva_rate || "20"),
-        isTitle: l.is_title || false,
-        isSubtotal: l.is_subtotal || false,
-        lineType: (l.line_type as LineType) || "fourniture",
-        purchasePriceHT: String(l.purchase_price_ht || ""),
+        unit_price_ht: String(l.unit_price_ht || "0"),
+        tva_rate: String(l.tva_rate || "20"),
+        is_title: l.is_title || false,
+        is_subtotal: l.is_subtotal || false,
+        line_type: (l.line_type as LineType) || "fourniture",
+        purchase_price_ht: String(l.purchase_price_ht || ""),
         coefficient: String(l.coefficient || ""),
-        marginPercent: String(l.margin_percent || ""),
+        margin_percent: String(l.margin_percent || ""),
       })));
     } else if (existingLines.length === 0 && quote && !isLoading) {
       setLines([{ ...EMPTY_LINE }]);
@@ -751,10 +751,10 @@ export default function DevisDetailPage() {
     setLines(prev => [...prev, { ...EMPTY_LINE }]);
   }
   function addTitleLine() {
-    setLines(prev => [...prev, { ...EMPTY_LINE, isTitle: true, designation: "Nouveau chapitre" }]);
+    setLines(prev => [...prev, { ...EMPTY_LINE, is_title: true, designation: "Nouveau chapitre" }]);
   }
   function addSubtotalLine() {
-    setLines(prev => [...prev, { ...EMPTY_LINE, isSubtotal: true, designation: "Sous-total" }]);
+    setLines(prev => [...prev, { ...EMPTY_LINE, is_subtotal: true, designation: "Sous-total" }]);
   }
   function removeLine(idx: number) {
     setLines(prev => prev.filter((_, i) => i !== idx));
@@ -764,26 +764,26 @@ export default function DevisDetailPage() {
       if (i !== idx) return l;
       const updated = { ...l, [field]: value };
       // Auto-calculate margin fields
-      if (field === "coefficient" && updated.purchasePriceHT) {
+      if (field === "coefficient" && updated.purchase_price_ht) {
         const coeff = parseFloat(value as string);
-        const purchase = parseFloat(updated.purchasePriceHT);
+        const purchase = parseFloat(updated.purchase_price_ht);
         if (coeff > 0 && purchase > 0) {
-          updated.unitPriceHT = String((purchase * coeff).toFixed(2));
-          updated.marginPercent = String(((1 - 1 / coeff) * 100).toFixed(1));
+          updated.unit_price_ht = String((purchase * coeff).toFixed(2));
+          updated.margin_percent = String(((1 - 1 / coeff) * 100).toFixed(1));
         }
-      } else if (field === "unitPriceHT" && updated.purchasePriceHT) {
+      } else if (field === "unit_price_ht" && updated.purchase_price_ht) {
         const selling = parseFloat(value as string);
-        const purchase = parseFloat(updated.purchasePriceHT);
+        const purchase = parseFloat(updated.purchase_price_ht);
         if (selling > 0 && purchase > 0) {
           updated.coefficient = String((selling / purchase).toFixed(2));
-          updated.marginPercent = String(((1 - purchase / selling) * 100).toFixed(1));
+          updated.margin_percent = String(((1 - purchase / selling) * 100).toFixed(1));
         }
-      } else if (field === "purchasePriceHT" && updated.unitPriceHT) {
+      } else if (field === "purchase_price_ht" && updated.unit_price_ht) {
         const purchase = parseFloat(value as string);
-        const selling = parseFloat(updated.unitPriceHT);
+        const selling = parseFloat(updated.unit_price_ht);
         if (purchase > 0 && selling > 0) {
           updated.coefficient = String((selling / purchase).toFixed(2));
-          updated.marginPercent = String(((1 - purchase / selling) * 100).toFixed(1));
+          updated.margin_percent = String(((1 - purchase / selling) * 100).toFixed(1));
         }
       }
       return updated;
@@ -805,33 +805,33 @@ export default function DevisDetailPage() {
       description: l.description || "",
       quantity: "1",
       unit: l.unit || "u",
-      unitPriceHT: l.unitPriceHT || "0",
-      tvaRate: l.tvaRate || "10",
-      isTitle: false,
-      isSubtotal: false,
-      lineType: (l.lineType as LineType) || "fourniture",
-      purchasePriceHT: l.purchasePriceHT || "",
+      unit_price_ht: l.unit_price_ht || "0",
+      tva_rate: l.tva_rate || "10",
+      is_title: false,
+      is_subtotal: false,
+      line_type: (l.line_type as LineType) || "fourniture",
+      purchase_price_ht: l.purchase_price_ht || "",
       coefficient: l.coefficient || "",
-      marginPercent: l.marginPercent || "",
+      margin_percent: l.margin_percent || "",
     }));
     setLines(prev => {
       const nonEmpty = prev.filter(l => l.designation.trim() !== "");
       if (nonEmpty.length === 0) return newLines;
-      return [...prev, { ...EMPTY_LINE, isTitle: true, designation: template.name }, ...newLines];
+      return [...prev, { ...EMPTY_LINE, is_title: true, designation: template.name }, ...newLines];
     });
     toast({ title: "Modèle appliqué", description: `${template.name} — ${newLines.length} lignes ajoutées` });
   }
 
   // Calculations
-  const dataLines = lines.filter(l => !l.isTitle && !l.isSubtotal);
+  const dataLines = lines.filter(l => !l.is_title && !l.is_subtotal);
   const totalHT = dataLines
-    .reduce((s, l) => s + (parseFloat(l.quantity || "0") * parseFloat(l.unitPriceHT || "0")), 0);
+    .reduce((s, l) => s + (parseFloat(l.quantity || "0") * parseFloat(l.unit_price_ht || "0")), 0);
   const totalTVA = dataLines
     .reduce((s, l) => {
-      const ht = parseFloat(l.quantity || "0") * parseFloat(l.unitPriceHT || "0");
-      return s + ht * (parseFloat(l.tvaRate || "0") / 100);
+      const ht = parseFloat(l.quantity || "0") * parseFloat(l.unit_price_ht || "0");
+      return s + ht * (parseFloat(l.tva_rate || "0") / 100);
     }, 0);
-  const discountPct = parseFloat(quoteForm.discountPercent || "0");
+  const discountPct = parseFloat(quoteForm.discount_percent || "0");
   const discountAmount = discountPct > 0 ? totalHT * (discountPct / 100) : 0;
 
   // Global adjustments
@@ -847,7 +847,7 @@ export default function DevisDetailPage() {
 
   // Margin totals
   const totalPurchaseHT = dataLines
-    .reduce((s, l) => s + (parseFloat(l.quantity || "0") * parseFloat(l.purchasePriceHT || "0")), 0);
+    .reduce((s, l) => s + (parseFloat(l.quantity || "0") * parseFloat(l.purchase_price_ht || "0")), 0);
   const margeBruteHT = finalHT - totalPurchaseHT;
 
   // Save mutation (bulk lines + quote update)
@@ -857,31 +857,31 @@ export default function DevisDetailPage() {
       await db.updateQuote(quoteId, {
         title: quoteForm.title,
         description: quoteForm.description,
-        valid_until: quoteForm.validUntil || null,
+        valid_until: quoteForm.valid_until || null,
         notes: quoteForm.notes || null,
         conditions: quoteForm.conditions || null,
-        contact_id: Number(quoteForm.contactId) || quote?.contact_id,
-        discount_percent: quoteForm.discountPercent || null,
+        contact_id: Number(quoteForm.contact_id) || quote?.contact_id,
+        discount_percent: quoteForm.discount_percent || null,
         amount_ht: finalHT.toFixed(2),
         amount_tva: finalTVA.toFixed(2),
         amount_ttc: totalTTC.toFixed(2),
       });
       // Save lines via bulk operation
       const cleanLines = lines
-        .filter(l => l.designation.trim() !== "" || l.isTitle || l.isSubtotal)
+        .filter(l => l.designation.trim() !== "" || l.is_title || l.is_subtotal)
         .map(l => ({
           designation: l.designation,
           description: l.description || null,
           quantity: l.quantity || "1",
           unit: l.unit || "u",
-          unit_price_ht: l.unitPriceHT || "0",
-          tva_rate: l.tvaRate || "20",
-          is_title: l.isTitle || false,
-          is_subtotal: l.isSubtotal || false,
-          line_type: l.lineType || null,
-          purchase_price_ht: l.purchasePriceHT || null,
+          unit_price_ht: l.unit_price_ht || "0",
+          tva_rate: l.tva_rate || "20",
+          is_title: l.is_title || false,
+          is_subtotal: l.is_subtotal || false,
+          line_type: l.line_type || null,
+          purchase_price_ht: l.purchase_price_ht || null,
           coefficient: l.coefficient || null,
-          margin_percent: l.marginPercent || null,
+          margin_percent: l.margin_percent || null,
         }));
       await db.bulkSaveDocumentLines("quote", quoteId, cleanLines);
     },
@@ -1009,14 +1009,14 @@ export default function DevisDetailPage() {
               <div className="space-y-3">
                 <div>
                   <Label className="text-xs">Client</Label>
-                  <Select value={quoteForm.contactId} onValueChange={v => setQuoteForm(f => ({ ...f, contactId: v }))}>
+                  <Select value={quoteForm.contact_id} onValueChange={v => setQuoteForm(f => ({ ...f, contact_id: v }))}>
                     <SelectTrigger className="h-8 text-sm mt-1" data-testid="select-detail-client">
                       <SelectValue placeholder="Sélectionner un client" />
                     </SelectTrigger>
                     <SelectContent>
                       {clients.map((c: any) => (
                         <SelectItem key={c.id} value={String(c.id)}>
-                          {contactName({ firstName: c.first_name, lastName: c.last_name, company: c.company } as any)}{c.company ? ` — ${c.company}` : ""}
+                          {contactName({ first_name: c.first_name, last_name: c.last_name, company: c.company })}{c.company ? ` — ${c.company}` : ""}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -1046,8 +1046,8 @@ export default function DevisDetailPage() {
                   <div>
                     <Label className="text-xs">Valide jusqu'au</Label>
                     <Input
-                      type="date" value={quoteForm.validUntil}
-                      onChange={e => setQuoteForm(f => ({ ...f, validUntil: e.target.value }))}
+                      type="date" value={quoteForm.valid_until}
+                      onChange={e => setQuoteForm(f => ({ ...f, valid_until: e.target.value }))}
                       className="h-8 text-sm mt-1" data-testid="input-detail-valid"
                     />
                   </div>
@@ -1055,8 +1055,8 @@ export default function DevisDetailPage() {
                     <Label className="text-xs">Remise (%)</Label>
                     <Input
                       type="number" step="0.1" min="0" max="100"
-                      value={quoteForm.discountPercent}
-                      onChange={e => setQuoteForm(f => ({ ...f, discountPercent: e.target.value }))}
+                      value={quoteForm.discount_percent}
+                      onChange={e => setQuoteForm(f => ({ ...f, discount_percent: e.target.value }))}
                       placeholder="0" className="h-8 text-sm mt-1" data-testid="input-detail-discount"
                     />
                   </div>
@@ -1215,7 +1215,7 @@ export default function DevisDetailPage() {
                 <BarChart3 className="size-3" /> Marges
               </Button>
               <div className="ml-auto text-xs text-muted-foreground">
-                {lines.filter(l => !l.isTitle && !l.isSubtotal).length} ligne(s)
+                {lines.filter(l => !l.is_title && !l.is_subtotal).length} ligne(s)
               </div>
             </CardContent>
           </Card>
@@ -1223,9 +1223,9 @@ export default function DevisDetailPage() {
           {/* Lines list */}
           <div className="space-y-2">
             {lines.map((line, idx) => (
-              <Card key={idx} className={`transition-all ${line.isTitle ? "border-l-[3px] border-l-primary border-primary/30 bg-primary/5" : line.isSubtotal ? "border-border bg-muted/30" : ""}`}>
+              <Card key={idx} className={`transition-all ${line.is_title ? "border-l-[3px] border-l-primary border-primary/30 bg-primary/5" : line.is_subtotal ? "border-border bg-muted/30" : ""}`}>
                 <CardContent className="py-3 px-4">
-                  {line.isTitle ? (
+                  {line.is_title ? (
                     /* Title line */
                     <div className="flex items-center gap-2">
                       <div className="flex flex-col gap-1">
@@ -1248,7 +1248,7 @@ export default function DevisDetailPage() {
                         <Trash2 className="size-3.5" />
                       </Button>
                     </div>
-                  ) : line.isSubtotal ? (
+                  ) : line.is_subtotal ? (
                     /* Subtotal line */
                     <div className="flex items-center gap-2">
                       <div className="flex flex-col gap-1">
@@ -1263,8 +1263,8 @@ export default function DevisDetailPage() {
                       <span className="text-sm font-medium text-muted-foreground flex-1">
                         {(() => {
                           for (let j = idx - 1; j >= 0; j--) {
-                            if (lines[j].isTitle) return `Sous-total ${lines[j].designation}`;
-                            if (lines[j].isSubtotal) break;
+                            if (lines[j].is_title) return `Sous-total ${lines[j].designation}`;
+                            if (lines[j].is_subtotal) break;
                           }
                           return "Sous-total";
                         })()}
@@ -1273,10 +1273,10 @@ export default function DevisDetailPage() {
                         {(() => {
                           const prevLines: LineItem[] = [];
                           for (let j = idx - 1; j >= 0; j--) {
-                            if (lines[j].isTitle || lines[j].isSubtotal) break;
+                            if (lines[j].is_title || lines[j].is_subtotal) break;
                             prevLines.push(lines[j]);
                           }
-                          return formatCurrency(prevLines.reduce((s, l) => s + (parseFloat(l.quantity || "0") * parseFloat(l.unitPriceHT || "0")), 0));
+                          return formatCurrency(prevLines.reduce((s, l) => s + (parseFloat(l.quantity || "0") * parseFloat(l.unit_price_ht || "0")), 0));
                         })()}
                       </span>
                       <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={() => removeLine(idx)}>
@@ -1305,11 +1305,11 @@ export default function DevisDetailPage() {
                               data-testid={`line-designation-${idx}`}
                             />
                             {(() => {
-                              const lt = LINE_TYPE_MAP[line.lineType];
+                              const lt = LINE_TYPE_MAP[line.line_type];
                               if (!lt) return null;
                               const Icon = lt.icon;
                               return (
-                                <Select value={line.lineType} onValueChange={v => updateLine(idx, "lineType", v)}>
+                                <Select value={line.line_type} onValueChange={v => updateLine(idx, "line_type", v)}>
                                   <SelectTrigger className="h-7 w-auto gap-1 border-0 px-2 text-[10px] shrink-0" style={{ background: `${lt.color}15`, color: lt.color }}>
                                     <Icon className="size-3" />
                                     <span>{lt.label}</span>
@@ -1361,8 +1361,8 @@ export default function DevisDetailPage() {
                                 <Label className="text-[10px] text-muted-foreground">Coût achat</Label>
                                 <Input
                                   type="number" step="0.01" min="0"
-                                  value={line.purchasePriceHT}
-                                  onChange={e => updateLine(idx, "purchasePriceHT", e.target.value)}
+                                  value={line.purchase_price_ht}
+                                  onChange={e => updateLine(idx, "purchase_price_ht", e.target.value)}
                                   className="h-7 text-xs" placeholder="0" data-testid={`line-purchase-${idx}`}
                                 />
                               </div>
@@ -1382,8 +1382,8 @@ export default function DevisDetailPage() {
                               <Label className="text-[10px] text-muted-foreground">P.U. HT</Label>
                               <Input
                                 type="number" step="0.01" min="0"
-                                value={line.unitPriceHT}
-                                onChange={e => updateLine(idx, "unitPriceHT", e.target.value)}
+                                value={line.unit_price_ht}
+                                onChange={e => updateLine(idx, "unit_price_ht", e.target.value)}
                                 className="h-7 text-xs" data-testid={`line-price-${idx}`}
                               />
                             </div>
@@ -1391,13 +1391,13 @@ export default function DevisDetailPage() {
                               <div>
                                 <Label className="text-[10px] text-muted-foreground">Marge %</Label>
                                 <div className="h-7 flex items-center text-xs text-emerald-400 pr-1">
-                                  {line.marginPercent ? `${line.marginPercent}%` : "—"}
+                                  {line.margin_percent ? `${line.margin_percent}%` : "—"}
                                 </div>
                               </div>
                             )}
                             <div>
                               <Label className="text-[10px] text-muted-foreground">TVA</Label>
-                              <Select value={line.tvaRate} onValueChange={v => updateLine(idx, "tvaRate", v)}>
+                              <Select value={line.tva_rate} onValueChange={v => updateLine(idx, "tva_rate", v)}>
                                 <SelectTrigger className="h-7 text-xs" data-testid={`line-tva-${idx}`}>
                                   <SelectValue />
                                 </SelectTrigger>
@@ -1409,7 +1409,7 @@ export default function DevisDetailPage() {
                             <div>
                               <Label className="text-[10px] text-muted-foreground">Total HT</Label>
                               <div className="h-7 flex items-center text-xs font-semibold text-right pr-2">
-                                {formatCurrency(parseFloat(line.quantity || "0") * parseFloat(line.unitPriceHT || "0"))}
+                                {formatCurrency(parseFloat(line.quantity || "0") * parseFloat(line.unit_price_ht || "0"))}
                               </div>
                             </div>
                           </div>

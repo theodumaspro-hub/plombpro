@@ -20,7 +20,7 @@ export default function BanquesPage() {
   const [activeAccountId, setActiveAccountId] = useState<number | null>(null);
   const [addAccountOpen, setAddAccountOpen] = useState(false);
   const [accountForm, setAccountForm] = useState({
-    bankName: "", accountName: "", iban: "", bic: "", color: ACCOUNT_COLORS[0],
+    bank_name: "", account_name: "", iban: "", bic: "", color: ACCOUNT_COLORS[0],
   });
   const { toast } = useToast();
 
@@ -41,7 +41,7 @@ export default function BanquesPage() {
       queryClient.invalidateQueries({ queryKey: ["bank-accounts"] });
       setAddAccountOpen(false);
       toast({ title: "Compte ajouté" });
-      setAccountForm({ bankName: "", accountName: "", iban: "", bic: "", color: ACCOUNT_COLORS[0] });
+      setAccountForm({ bank_name: "", account_name: "", iban: "", bic: "", color: ACCOUNT_COLORS[0] });
     },
   });
 
@@ -76,8 +76,8 @@ export default function BanquesPage() {
   function handleAddAccount(e: React.FormEvent) {
     e.preventDefault();
     createAccountMut.mutate({
-      bank_name: accountForm.bankName,
-      account_name: accountForm.accountName,
+      bank_name: accountForm.bank_name,
+      account_name: accountForm.account_name,
       iban: accountForm.iban || null,
       bic: accountForm.bic || null,
       balance: "0",
@@ -247,11 +247,11 @@ export default function BanquesPage() {
           <form onSubmit={handleAddAccount} className="space-y-4">
             <div>
               <Label>Nom de la banque *</Label>
-              <Input value={accountForm.bankName} onChange={e => setAccountForm(f => ({ ...f, bankName: e.target.value }))} placeholder="Ex: BNP Paribas" required data-testid="input-bank-name" />
+              <Input value={accountForm.bank_name} onChange={e => setAccountForm(f => ({ ...f, bank_name: e.target.value }))} placeholder="Ex: BNP Paribas" required data-testid="input-bank-name" />
             </div>
             <div>
               <Label>Nom du compte *</Label>
-              <Input value={accountForm.accountName} onChange={e => setAccountForm(f => ({ ...f, accountName: e.target.value }))} placeholder="Ex: Compte courant pro" required data-testid="input-account-name" />
+              <Input value={accountForm.account_name} onChange={e => setAccountForm(f => ({ ...f, account_name: e.target.value }))} placeholder="Ex: Compte courant pro" required data-testid="input-account-name" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -279,7 +279,7 @@ export default function BanquesPage() {
             </div>
             <DialogFooter>
               <Button type="button" variant="secondary" onClick={() => setAddAccountOpen(false)}>Annuler</Button>
-              <Button type="submit" disabled={createAccountMut.isPending || !accountForm.bankName || !accountForm.accountName} data-testid="btn-submit-account">
+              <Button type="submit" disabled={createAccountMut.isPending || !accountForm.bank_name || !accountForm.account_name} data-testid="btn-submit-account">
                 {createAccountMut.isPending ? "Ajout..." : "Ajouter"}
               </Button>
             </DialogFooter>

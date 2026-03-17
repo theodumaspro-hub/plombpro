@@ -61,7 +61,7 @@ export default function DocumentsPage() {
   const { data: documents = [] } = useQuery<any[]>({ queryKey: ["documents"], queryFn: () => db.getDocuments() });
 
   const [form, setForm] = useState({
-    name: "", type: "autre", category: "technique", relatedType: "", relatedId: "", notes: "",
+    name: "", type: "autre", category: "technique", related_type: "", related_id: "", notes: "",
   });
 
   const createMut = useMutation({
@@ -70,7 +70,7 @@ export default function DocumentsPage() {
       queryClient.invalidateQueries({ queryKey: ["documents"] });
       setOpen(false);
       toast({ title: "Document ajouté" });
-      setForm({ name: "", type: "autre", category: "technique", relatedType: "", relatedId: "", notes: "" });
+      setForm({ name: "", type: "autre", category: "technique", related_type: "", related_id: "", notes: "" });
     },
   });
 
@@ -93,8 +93,8 @@ export default function DocumentsPage() {
       name: form.name,
       type: form.type,
       category: form.category || null,
-      related_type: form.relatedType || null,
-      related_id: form.relatedId ? Number(form.relatedId) : null,
+      related_type: form.related_type || null,
+      related_id: form.related_id ? Number(form.related_id) : null,
       size: Math.floor(Math.random() * 3000000) + 50000,
       mime_type: mimeTypes[form.type] || "application/octet-stream",
       url: `/docs/${form.name.toLowerCase().replace(/\s/g, "-")}`,
@@ -359,7 +359,7 @@ export default function DocumentsPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Lié à (type)</Label>
-                <Select value={form.relatedType} onValueChange={v => setForm(f => ({ ...f, relatedType: v }))}>
+                <Select value={form.related_type} onValueChange={v => setForm(f => ({ ...f, related_type: v }))}>
                   <SelectTrigger><SelectValue placeholder="Aucun" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="">Aucun</SelectItem>
@@ -372,7 +372,7 @@ export default function DocumentsPage() {
               </div>
               <div>
                 <Label>ID lié</Label>
-                <Input type="number" value={form.relatedId} onChange={e => setForm(f => ({ ...f, relatedId: e.target.value }))} placeholder="Optionnel" />
+                <Input type="number" value={form.related_id} onChange={e => setForm(f => ({ ...f, related_id: e.target.value }))} placeholder="Optionnel" />
               </div>
             </div>
             <div><Label>Notes</Label><Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} /></div>

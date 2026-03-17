@@ -39,15 +39,15 @@ export default function OnboardingWizard({ onComplete }: OnboardingProps) {
     // Step 0: Trade
     trade: "",
     // Step 1: Company
-    name: "", legalForm: "", siret: "", tvaIntracom: "",
+    name: "", legal_form: "", siret: "", tva_intracom: "",
     // Step 2: Address
-    address: "", city: "", postalCode: "",
+    address: "", city: "", postal_code: "",
     // Step 3: Contact
     phone: "", email: "",
     // Step 4: Certifications
-    assuranceDecennale: "", qualifications: "",
+    assurance_decennale: "", qualifications: "",
     // Step 5: Bank
-    iban: "", bic: "", bankName: "",
+    iban: "", bic: "", bank_name: "",
   });
 
   const updateMut = useMutation({
@@ -62,7 +62,7 @@ export default function OnboardingWizard({ onComplete }: OnboardingProps) {
   function next() {
     if (step < totalSteps - 1) setStep(s => s + 1);
     // Save progress
-    updateMut.mutate({ ...data, onboardingStep: step + 1 });
+    updateMut.mutate({ ...data, onboarding_step: step + 1 });
   }
 
   function prev() {
@@ -70,7 +70,7 @@ export default function OnboardingWizard({ onComplete }: OnboardingProps) {
   }
 
   function finish() {
-    updateMut.mutate({ ...data, onboardingCompleted: true, onboardingStep: 6 }, {
+    updateMut.mutate({ ...data, onboarding_completed: true, onboarding_step: 6 }, {
       onSuccess: () => {
         toast({ title: "Configuration terminée", description: "Choisissez maintenant votre formule." });
         onComplete();
@@ -110,7 +110,7 @@ export default function OnboardingWizard({ onComplete }: OnboardingProps) {
           <div><Label>Raison sociale *</Label><Input value={data.name} onChange={e => setData(d => ({ ...d, name: e.target.value }))} placeholder="Ex: Martin Plomberie" data-testid="input-company-name" /></div>
           <div>
             <Label>Forme juridique *</Label>
-            <Select value={data.legalForm} onValueChange={v => setData(d => ({ ...d, legalForm: v }))}>
+            <Select value={data.legal_form} onValueChange={v => setData(d => ({ ...d, legal_form: v }))}>
               <SelectTrigger data-testid="select-legal-form"><SelectValue placeholder="Choisir" /></SelectTrigger>
               <SelectContent>
                 {LEGAL_FORMS.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}
@@ -119,11 +119,11 @@ export default function OnboardingWizard({ onComplete }: OnboardingProps) {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div><Label>SIRET</Label><Input value={data.siret} onChange={e => setData(d => ({ ...d, siret: e.target.value }))} placeholder="XXX XXX XXX XXXXX" /></div>
-            <div><Label>N° TVA intracom.</Label><Input value={data.tvaIntracom} onChange={e => setData(d => ({ ...d, tvaIntracom: e.target.value }))} placeholder="FRXXXXXXXXX" /></div>
+            <div><Label>N° TVA intracom.</Label><Input value={data.tva_intracom} onChange={e => setData(d => ({ ...d, tva_intracom: e.target.value }))} placeholder="FRXXXXXXXXX" /></div>
           </div>
         </div>
       ),
-      valid: !!data.name && !!data.legalForm,
+      valid: !!data.name && !!data.legal_form,
     },
     {
       title: "Adresse",
@@ -134,11 +134,11 @@ export default function OnboardingWizard({ onComplete }: OnboardingProps) {
           <div><Label>Adresse</Label><Input value={data.address} onChange={e => setData(d => ({ ...d, address: e.target.value }))} /></div>
           <div className="grid grid-cols-2 gap-3">
             <div><Label>Ville *</Label><Input value={data.city} onChange={e => setData(d => ({ ...d, city: e.target.value }))} /></div>
-            <div><Label>Code postal *</Label><Input value={data.postalCode} onChange={e => setData(d => ({ ...d, postalCode: e.target.value }))} /></div>
+            <div><Label>Code postal *</Label><Input value={data.postal_code} onChange={e => setData(d => ({ ...d, postal_code: e.target.value }))} /></div>
           </div>
         </div>
       ),
-      valid: !!data.city && !!data.postalCode,
+      valid: !!data.city && !!data.postal_code,
     },
     {
       title: "Contact",
@@ -158,7 +158,7 @@ export default function OnboardingWizard({ onComplete }: OnboardingProps) {
       icon: <Shield className="size-6 text-primary" />,
       content: (
         <div className="space-y-4">
-          <div><Label>Assurance décennale</Label><Input value={data.assuranceDecennale} onChange={e => setData(d => ({ ...d, assuranceDecennale: e.target.value }))} placeholder="Ex: AXA N° 12345" /></div>
+          <div><Label>Assurance décennale</Label><Input value={data.assurance_decennale} onChange={e => setData(d => ({ ...d, assurance_decennale: e.target.value }))} placeholder="Ex: AXA N° 12345" /></div>
           <div><Label>Qualifications / Labels</Label><Input value={data.qualifications} onChange={e => setData(d => ({ ...d, qualifications: e.target.value }))} placeholder="Ex: RGE QualiPAC, Qualibat" /></div>
           <div className="p-3 bg-muted/30 rounded-lg">
             <p className="text-xs text-muted-foreground">Ces informations seront automatiquement ajoutées à vos devis et factures comme mentions obligatoires.</p>
@@ -176,7 +176,7 @@ export default function OnboardingWizard({ onComplete }: OnboardingProps) {
           <div><Label>IBAN</Label><Input value={data.iban} onChange={e => setData(d => ({ ...d, iban: e.target.value }))} placeholder="FR76 XXXX XXXX XXXX XXXX XXXX XXX" /></div>
           <div className="grid grid-cols-2 gap-3">
             <div><Label>BIC</Label><Input value={data.bic} onChange={e => setData(d => ({ ...d, bic: e.target.value }))} /></div>
-            <div><Label>Banque</Label><Input value={data.bankName} onChange={e => setData(d => ({ ...d, bankName: e.target.value }))} /></div>
+            <div><Label>Banque</Label><Input value={data.bank_name} onChange={e => setData(d => ({ ...d, bank_name: e.target.value }))} /></div>
           </div>
         </div>
       ),

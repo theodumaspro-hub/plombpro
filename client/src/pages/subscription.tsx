@@ -106,7 +106,7 @@ export default function SubscriptionPage({ onComplete, onBack }: SubscriptionPro
   const [billing, setBilling] = useState<"monthly" | "yearly">("yearly");
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
-  const { data: company } = useQuery<CompanySettings>({ queryKey: ["company"], queryFn: () => db.getCompanySettings() });
+  const { data: company } = useQuery<CompanySettings | null>({ queryKey: ["company"], queryFn: () => db.getCompanySettings() });
 
   const subscribeMut = useMutation({
     mutationFn: async (planId: string) => {

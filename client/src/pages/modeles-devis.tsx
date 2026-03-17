@@ -19,9 +19,9 @@ interface TemplateLineItem {
   designation: string;
   quantity: number;
   unit: string;
-  unitPriceHT: number;
-  tvaRate: number;
-  lineType: string;
+  unit_price_ht: number;
+  tva_rate: number;
+  line_type: string;
   isTitle?: boolean;
 }
 
@@ -59,7 +59,7 @@ const TRADE_COLORS: Record<string, string> = {
 function calcTemplateTotal(lines: TemplateLineItem[]): number {
   return lines
     .filter(l => !l.isTitle)
-    .reduce((sum, l) => sum + l.quantity * l.unitPriceHT, 0);
+    .reduce((sum, l) => sum + l.quantity * l.unit_price_ht, 0);
 }
 
 export default function ModelesDevisPage() {
@@ -81,10 +81,10 @@ export default function ModelesDevisPage() {
   const createQuoteMut = useMutation({
     mutationFn: async (template: DevisTemplate) => {
       const dataLines = template.lines.filter(l => !l.isTitle);
-      const totalHT = dataLines.reduce((s, l) => s + l.quantity * l.unitPriceHT, 0);
+      const totalHT = dataLines.reduce((s, l) => s + l.quantity * l.unit_price_ht, 0);
       const totalTVA = dataLines.reduce((s, l) => {
-        const ht = l.quantity * l.unitPriceHT;
-        return s + ht * l.tvaRate / 100;
+        const ht = l.quantity * l.unit_price_ht;
+        return s + ht * l.tva_rate / 100;
       }, 0);
       return db.createQuote({
         contact_id: null,
@@ -229,15 +229,15 @@ export default function ModelesDevisPage() {
                               </tr>
                             );
                           }
-                          const lineTotal = line.quantity * line.unitPriceHT;
+                          const lineTotal = line.quantity * line.unit_price_ht;
                           return (
                             <tr key={i} className="border-b border-border/50">
                               <td className="py-2 px-4 text-sm">{line.designation}</td>
                               <td className="py-2 px-4 text-right text-sm tabular-nums">{line.quantity}</td>
                               <td className="py-2 px-4 text-xs text-muted-foreground">{line.unit}</td>
-                              <td className="py-2 px-4 text-right text-sm tabular-nums">{formatCurrency(line.unitPriceHT)}</td>
+                              <td className="py-2 px-4 text-right text-sm tabular-nums">{formatCurrency(line.unit_price_ht)}</td>
                               <td className="py-2 px-4 text-right text-sm font-medium tabular-nums">{formatCurrency(lineTotal)}</td>
-                              <td className="py-2 px-4 text-right text-xs text-muted-foreground tabular-nums">{line.tvaRate}%</td>
+                              <td className="py-2 px-4 text-right text-xs text-muted-foreground tabular-nums">{line.tva_rate}%</td>
                             </tr>
                           );
                         })}

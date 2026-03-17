@@ -456,87 +456,71 @@ const DEFAULT_CGV_BTP = `Conditions Générales de Vente — Travaux de plomberi
 function InvoicingSettings({ company }: { company: CompanySettings | undefined }) {
   const { toast } = useToast();
 
-  const [docColor, setDocColor] = useState(company?.documentColor || "#C87941");
+  const [docColor, setDocColor] = useState(company?.document_color || "#C87941");
   const [customColor, setCustomColor] = useState("");
-  const [logoAlign, setLogoAlign] = useState(company?.logoAlignment || "left");
-  const [tableStyle, setTableStyle] = useState(company?.tableStyle || "striped");
-  const [devisPrefix, setDevisPrefix] = useState(company?.devisPrefix || "DEV");
-  const [facturePrefix, setFacturePrefix] = useState(company?.facturePrefix || "FAC");
-  const [avoirPrefix, setAvoirPrefix] = useState(company?.avoirPrefix || "AV");
-  const [numberSep, setNumberSep] = useState(company?.numberSeparator || "-");
-  const [yearFormat, setYearFormat] = useState(company?.numberYearFormat || "YYYY");
-  const [defaultValidity, setDefaultValidity] = useState(String(company?.defaultValidity ?? 30));
-  const [paymentDelay, setPaymentDelay] = useState(String(company?.defaultPaymentDelay ?? 30));
+  const [logoAlign, setLogoAlign] = useState(company?.logo_alignment || "left");
+  const [tableStyle, setTableStyle] = useState(company?.table_style || "striped");
+  const [devisPrefix, setDevisPrefix] = useState(company?.devis_prefix || "DEV");
+  const [facturePrefix, setFacturePrefix] = useState(company?.facture_prefix || "FAC");
+  const [avoirPrefix, setAvoirPrefix] = useState(company?.avoir_prefix || "AV");
+  const [numberSep, setNumberSep] = useState(company?.number_separator || "-");
+  const [yearFormat, setYearFormat] = useState(company?.number_year_format || "YYYY");
+  const [defaultValidity, setDefaultValidity] = useState(String(company?.default_validity ?? 30));
+  const [paymentDelay, setPaymentDelay] = useState(String(company?.default_payment_delay ?? 30));
   const [paymentMethods, setPaymentMethods] = useState<string[]>(() => {
-    try { return company?.defaultPaymentMethods ? JSON.parse(company.defaultPaymentMethods) : ["virement", "chèque"]; } catch { return ["virement", "chèque"]; }
+    try { return company?.default_payment_methods ? JSON.parse(company.default_payment_methods) : ["virement", "chèque"]; } catch { return ["virement", "chèque"]; }
   });
-  const [acompteRate, setAcompteRate] = useState(company?.defaultAcompteRate || "30");
-  const [cgvText, setCgvText] = useState(company?.cgvText || "");
-  const [showCgv, setShowCgv] = useState(company?.showCgv ?? false);
-  const [autoliquidation, setAutoliquidation] = useState(company?.autoliquidationMention || "");
+  const [acompteRate, setAcompteRate] = useState(company?.default_acompte_rate || "30");
+  const [cgvText, setCgvText] = useState(company?.cgv_text || "");
+  const [showCgv, setShowCgv] = useState(company?.show_cgv ?? false);
+  const [autoliquidation, setAutoliquidation] = useState(company?.autoliquidation_mention || "");
 
   // Sync state when company data loads
   const companyId = company?.id;
   useState(() => {
     if (company) {
-      setDocColor(company.documentColor || "#C87941");
-      setLogoAlign(company.logoAlignment || "left");
-      setTableStyle(company.tableStyle || "striped");
-      setDevisPrefix(company.devisPrefix || "DEV");
-      setFacturePrefix(company.facturePrefix || "FAC");
-      setAvoirPrefix(company.avoirPrefix || "AV");
-      setNumberSep(company.numberSeparator || "-");
-      setYearFormat(company.numberYearFormat || "YYYY");
-      setDefaultValidity(String(company.defaultValidity ?? 30));
-      setPaymentDelay(String(company.defaultPaymentDelay ?? 30));
-      try { setPaymentMethods(company.defaultPaymentMethods ? JSON.parse(company.defaultPaymentMethods) : ["virement", "chèque"]); } catch { /* keep default */ }
-      setAcompteRate(company.defaultAcompteRate || "30");
-      setCgvText(company.cgvText || "");
-      setShowCgv(company.showCgv ?? false);
-      setAutoliquidation(company.autoliquidationMention || "");
+      setDocColor(company.document_color || "#C87941");
+      setLogoAlign(company.logo_alignment || "left");
+      setTableStyle(company.table_style || "striped");
+      setDevisPrefix(company.devis_prefix || "DEV");
+      setFacturePrefix(company.facture_prefix || "FAC");
+      setAvoirPrefix(company.avoir_prefix || "AV");
+      setNumberSep(company.number_separator || "-");
+      setYearFormat(company.number_year_format || "YYYY");
+      setDefaultValidity(String(company.default_validity ?? 30));
+      setPaymentDelay(String(company.default_payment_delay ?? 30));
+      try { setPaymentMethods(company.default_payment_methods ? JSON.parse(company.default_payment_methods) : ["virement", "chèque"]); } catch { /* keep default */ }
+      setAcompteRate(company.default_acompte_rate || "30");
+      setCgvText(company.cgv_text || "");
+      setShowCgv(company.show_cgv ?? false);
+      setAutoliquidation(company.autoliquidation_mention || "");
     }
   });
 
   const saveMut = useMutation({
-    mutationFn: async (data: any) => {
-      const mapped: Record<string, unknown> = {};
-      if (data.documentColor !== undefined) mapped.document_color = data.documentColor;
-      if (data.logoAlignment !== undefined) mapped.logo_alignment = data.logoAlignment;
-      if (data.tableStyle !== undefined) mapped.table_style = data.tableStyle;
-      if (data.devisPrefix !== undefined) mapped.devis_prefix = data.devisPrefix;
-      if (data.facturePrefix !== undefined) mapped.facture_prefix = data.facturePrefix;
-      if (data.avoirPrefix !== undefined) mapped.avoir_prefix = data.avoirPrefix;
-      if (data.numberSeparator !== undefined) mapped.number_separator = data.numberSeparator;
-      if (data.numberYearFormat !== undefined) mapped.number_year_format = data.numberYearFormat;
-      if (data.defaultValidity !== undefined) mapped.default_validity = data.defaultValidity;
-      if (data.defaultPaymentDelay !== undefined) mapped.default_payment_delay = data.defaultPaymentDelay;
-      if (data.defaultPaymentMethods !== undefined) mapped.default_payment_methods = data.defaultPaymentMethods;
-      if (data.defaultAcompteRate !== undefined) mapped.default_acompte_rate = data.defaultAcompteRate;
-      if (data.cgvText !== undefined) mapped.cgv_text = data.cgvText;
-      if (data.showCgv !== undefined) mapped.show_cgv = data.showCgv;
-      if (data.autoliquidationMention !== undefined) mapped.autoliquidation_mention = data.autoliquidationMention;
-      return db.updateCompanySettings(mapped as any);
+    mutationFn: async (data: Record<string, unknown>) => {
+      return db.updateCompanySettings(data as any);
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["company"] }); toast({ title: "Paramètres de facturation sauvegardés" }); },
   });
 
   function handleSave() {
     saveMut.mutate({
-      documentColor: docColor,
-      logoAlignment: logoAlign,
-      tableStyle,
-      devisPrefix,
-      facturePrefix,
-      avoirPrefix,
-      numberSeparator: numberSep,
-      numberYearFormat: yearFormat,
-      defaultValidity: parseInt(defaultValidity) || 30,
-      defaultPaymentDelay: parseInt(paymentDelay) || 30,
-      defaultPaymentMethods: JSON.stringify(paymentMethods),
-      defaultAcompteRate: acompteRate,
-      cgvText,
-      showCgv,
-      autoliquidationMention: autoliquidation || null,
+      document_color: docColor,
+      logo_alignment: logoAlign,
+      table_style: tableStyle,
+      devis_prefix: devisPrefix,
+      facture_prefix: facturePrefix,
+      avoir_prefix: avoirPrefix,
+      number_separator: numberSep,
+      number_year_format: yearFormat,
+      default_validity: parseInt(defaultValidity) || 30,
+      default_payment_delay: parseInt(paymentDelay) || 30,
+      default_payment_methods: JSON.stringify(paymentMethods),
+      default_acompte_rate: acompteRate,
+      cgv_text: cgvText,
+      show_cgv: showCgv,
+      autoliquidation_mention: autoliquidation || null,
     });
   }
 

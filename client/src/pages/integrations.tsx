@@ -70,7 +70,7 @@ export default function IntegrationsPage() {
 
   // ─── API Keys state ─────────────────────
   const [keyDialogOpen, setKeyDialogOpen] = useState(false);
-  const [keyForm, setKeyForm] = useState({ name: "", expiresAt: "", permissions: [] as string[] });
+  const [keyForm, setKeyForm] = useState({ name: "", expires_at: "", permissions: [] as string[] });
 
   const { data: apiKeys = [] } = useQuery<any[]>({
     queryKey: ["api-keys"],
@@ -82,13 +82,13 @@ export default function IntegrationsPage() {
       name: data.name,
       key: data.key,
       permissions: data.permissions,
-      expires_at: data.expiresAt || null,
+      expires_at: data.expires_at || null,
       status: data.status,
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["api-keys"] });
       setKeyDialogOpen(false);
-      setKeyForm({ name: "", expiresAt: "", permissions: [] });
+      setKeyForm({ name: "", expires_at: "", permissions: [] });
       toast({ title: "Clé API créée" });
     },
   });
@@ -115,7 +115,7 @@ export default function IntegrationsPage() {
       name: keyForm.name,
       key: `ppro_live_${genHex(24)}`,
       permissions: JSON.stringify(keyForm.permissions),
-      expiresAt: keyForm.expiresAt || null,
+      expires_at: keyForm.expires_at || null,
       status: "active",
     });
   }
@@ -145,7 +145,7 @@ export default function IntegrationsPage() {
       events: data.events,
       secret: data.secret,
       status: data.status,
-      failure_count: data.failureCount,
+      failure_count: data.failure_count,
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["webhooks"] });
@@ -179,7 +179,7 @@ export default function IntegrationsPage() {
       events: JSON.stringify(webhookForm.events),
       secret: `whsec_${genHex(32)}`,
       status: "active",
-      failureCount: 0,
+      failure_count: 0,
     });
   }
 
@@ -464,8 +464,8 @@ export default function IntegrationsPage() {
               <Label>Date d'expiration (optionnel)</Label>
               <Input
                 type="date"
-                value={keyForm.expiresAt}
-                onChange={e => setKeyForm(f => ({ ...f, expiresAt: e.target.value }))}
+                value={keyForm.expires_at}
+                onChange={e => setKeyForm(f => ({ ...f, expires_at: e.target.value }))}
                 data-testid="input-key-expiry"
               />
             </div>

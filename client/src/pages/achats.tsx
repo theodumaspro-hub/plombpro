@@ -37,7 +37,7 @@ export default function AchatsPage() {
   const chantierMap = new Map(chantiers.map(c => [c.id, c]));
   const suppliers = contacts.filter(c => c.type === "fournisseur");
 
-  const [form, setForm] = useState({ supplierId: "", chantierId: "", amountHT: "", tvaRate: "20", orderDate: "", notes: "" });
+  const [form, setForm] = useState({ supplier_id: "", chantier_id: "", amount_ht: "", tva_rate: "20", order_date: "", notes: "" });
 
   const createMut = useMutation({
     mutationFn: async (data: any) => db.createPurchase(data),
@@ -58,18 +58,18 @@ export default function AchatsPage() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const ht = parseFloat(form.amountHT) || 0;
-    const tva = ht * (parseFloat(form.tvaRate) / 100);
+    const ht = parseFloat(form.amount_ht) || 0;
+    const tva = ht * (parseFloat(form.tva_rate) / 100);
     const num = `ACH-2026-${String(purchases.length + 1).padStart(3, "0")}`;
     createMut.mutate({
-      supplier_id: Number(form.supplierId),
-      chantier_id: form.chantierId ? Number(form.chantierId) : null,
+      supplier_id: Number(form.supplier_id),
+      chantier_id: form.chantier_id ? Number(form.chantier_id) : null,
       number: num,
       status: "brouillon",
       amount_ht: String(ht),
       amount_tva: String(tva.toFixed(2)),
       amount_ttc: String((ht + tva).toFixed(2)),
-      order_date: form.orderDate || null,
+      order_date: form.order_date || null,
       notes: form.notes || null,
     });
   }
@@ -170,7 +170,7 @@ export default function AchatsPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <Label>Fournisseur *</Label>
-              <Select value={form.supplierId} onValueChange={v => setForm(f => ({ ...f, supplierId: v }))}>
+              <Select value={form.supplier_id} onValueChange={v => setForm(f => ({ ...f, supplier_id: v }))}>
                 <SelectTrigger><SelectValue placeholder="Sélectionner" /></SelectTrigger>
                 <SelectContent>
                   {suppliers.map(s => (
@@ -181,7 +181,7 @@ export default function AchatsPage() {
             </div>
             <div>
               <Label>Chantier (optionnel)</Label>
-              <Select value={form.chantierId} onValueChange={v => setForm(f => ({ ...f, chantierId: v }))}>
+              <Select value={form.chantier_id} onValueChange={v => setForm(f => ({ ...f, chantier_id: v }))}>
                 <SelectTrigger><SelectValue placeholder="Aucun" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">Aucun</SelectItem>
@@ -192,10 +192,10 @@ export default function AchatsPage() {
               </Select>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Montant HT (€) *</Label><Input type="number" step="0.01" value={form.amountHT} onChange={e => setForm(f => ({ ...f, amountHT: e.target.value }))} required /></div>
+              <div><Label>Montant HT (€) *</Label><Input type="number" step="0.01" value={form.amount_ht} onChange={e => setForm(f => ({ ...f, amount_ht: e.target.value }))} required /></div>
               <div>
                 <Label>TVA (%)</Label>
-                <Select value={form.tvaRate} onValueChange={v => setForm(f => ({ ...f, tvaRate: v }))}>
+                <Select value={form.tva_rate} onValueChange={v => setForm(f => ({ ...f, tva_rate: v }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="20">20%</SelectItem>
@@ -205,11 +205,11 @@ export default function AchatsPage() {
                 </Select>
               </div>
             </div>
-            <div><Label>Date de commande</Label><Input type="date" value={form.orderDate} onChange={e => setForm(f => ({ ...f, orderDate: e.target.value }))} /></div>
+            <div><Label>Date de commande</Label><Input type="date" value={form.order_date} onChange={e => setForm(f => ({ ...f, order_date: e.target.value }))} /></div>
             <div><Label>Notes</Label><Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} /></div>
             <DialogFooter>
               <Button type="button" variant="secondary" onClick={() => setOpen(false)}>Annuler</Button>
-              <Button type="submit" disabled={createMut.isPending || !form.supplierId} data-testid="btn-submit-purchase">
+              <Button type="submit" disabled={createMut.isPending || !form.supplier_id} data-testid="btn-submit-purchase">
                 {createMut.isPending ? "Création..." : "Créer"}
               </Button>
             </DialogFooter>

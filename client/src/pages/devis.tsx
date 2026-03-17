@@ -41,8 +41,8 @@ export default function DevisPage() {
   const clients = contacts.filter((c: any) => c.type === "client");
 
   const [form, setForm] = useState({
-    contactId: "", title: "", tvaRate: "10", validUntil: "", notes: "", conditions: "Validité 30 jours. Acompte 30% à la commande.",
-    templateId: "",
+    contact_id: "", title: "", tva_rate: "10", valid_until: "", notes: "", conditions: "Validité 30 jours. Acompte 30% à la commande.",
+    template_id: "",
   });
 
   const createMut = useMutation({
@@ -173,21 +173,21 @@ export default function DevisPage() {
   }
 
   function resetForm() {
-    setForm({ contactId: "", title: "", tvaRate: "10", validUntil: "", notes: "", conditions: "Validité 30 jours. Acompte 30% à la commande.", templateId: "" });
+    setForm({ contact_id: "", title: "", tva_rate: "10", valid_until: "", notes: "", conditions: "Validité 30 jours. Acompte 30% à la commande.", template_id: "" });
   }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const num = `DEV-2026-${String(quotes.length + 1).padStart(3, "0")}`;
     createMut.mutate({
-      contact_id: Number(form.contactId),
+      contact_id: Number(form.contact_id),
       number: num,
       status: "brouillon",
       title: form.title,
       amount_ht: "0",
       amount_tva: "0",
       amount_ttc: "0",
-      valid_until: form.validUntil || null,
+      valid_until: form.valid_until || null,
       notes: form.notes || null,
       conditions: form.conditions || null,
     });
@@ -395,7 +395,7 @@ export default function DevisPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <Label>Client *</Label>
-              <Select value={form.contactId} onValueChange={v => setForm(f => ({ ...f, contactId: v }))}>
+              <Select value={form.contact_id} onValueChange={v => setForm(f => ({ ...f, contact_id: v }))}>
                 <SelectTrigger data-testid="select-client"><SelectValue placeholder="Sélectionner un client" /></SelectTrigger>
                 <SelectContent>
                   {clients.map((c: any) => (
@@ -415,7 +415,7 @@ export default function DevisPage() {
                 <Label className="flex items-center gap-2">
                   <Package className="size-3.5" /> Modèle (optionnel)
                 </Label>
-                <Select value={form.templateId} onValueChange={v => setForm(f => ({ ...f, templateId: v }))}>
+                <Select value={form.template_id} onValueChange={v => setForm(f => ({ ...f, template_id: v }))}>
                   <SelectTrigger data-testid="select-template"><SelectValue placeholder="Démarrer avec un modèle" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Aucun modèle</SelectItem>
@@ -426,7 +426,7 @@ export default function DevisPage() {
                     ))}
                   </SelectContent>
                 </Select>
-                {form.templateId && form.templateId !== "none" && (
+                {form.template_id && form.template_id !== "none" && (
                   <p className="text-xs text-muted-foreground mt-1">
                     Les lignes du modèle seront pré-remplies. Vous pourrez les modifier ensuite.
                   </p>
@@ -436,7 +436,7 @@ export default function DevisPage() {
 
             <div>
               <Label>Valide jusqu'au</Label>
-              <Input type="date" value={form.validUntil} onChange={e => setForm(f => ({ ...f, validUntil: e.target.value }))} data-testid="input-valid-until" />
+              <Input type="date" value={form.valid_until} onChange={e => setForm(f => ({ ...f, valid_until: e.target.value }))} data-testid="input-valid-until" />
             </div>
             <div>
               <Label>Conditions</Label>
@@ -444,7 +444,7 @@ export default function DevisPage() {
             </div>
             <DialogFooter>
               <Button type="button" variant="secondary" onClick={() => setOpen(false)}>Annuler</Button>
-              <Button type="submit" disabled={createMut.isPending || !form.contactId || !form.title} data-testid="btn-submit-devis">
+              <Button type="submit" disabled={createMut.isPending || !form.contact_id || !form.title} data-testid="btn-submit-devis">
                 {createMut.isPending ? "Création..." : "Créer le devis"}
               </Button>
             </DialogFooter>
