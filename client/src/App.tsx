@@ -3,6 +3,7 @@ import { Switch, Route, Router } from "wouter";
 import { useHashLocation } from "wouter/use-hash-location";
 import { queryClient } from "./lib/queryClient";
 import { authStore } from "./lib/authStore";
+import { supabase } from "./lib/supabase";
 import { db } from "@/lib/supabaseData";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -39,14 +40,30 @@ type AppView = "landing" | "login" | "signup" | "onboarding" | "subscription" | 
 function AppRouter() {
   const [view, setView] = useState<AppView>("landing");
   const [isAuthed, setIsAuthed] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
 
-  // Reactive auth state — subscribe to authStore changes
-  const [hasToken, setHasToken] = useState(() => authStore.isAuthenticated());
+  // On mount: check if Supabase already has a session (restored from localStorage)
   useEffect(() => {
-    const unsub = authStore.subscribe(() => {
-      setHasToken(authStore.isAuthenticated());
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        console.log('[APP] Restored session for', session.user.email);
+        setIsAuthed(true);
+      }
+      setAuthChecked(true);
     });
-    return unsub;
+  }, []);
+
+  // Also react to auth state changes (login/logout)
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const authed = !!session;
+      setIsAuthed(authed);
+      if (!authed) {
+        setView("landing");
+        queryClient.clear();
+      }
+    });
+    return () => subscription.unsubscribe();
   }, []);
 
   // Check company/onboarding state (only when authed)
@@ -103,8 +120,8 @@ function AppRouter() {
     setView("landing");
   }, []);
 
-  // Loading state
-  if (isAuthed && companyLoading) {
+  // Loading state — wait for auth check + company data
+  if (!authChecked || (isAuthed && companyLoading)) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
