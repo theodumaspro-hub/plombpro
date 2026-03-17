@@ -1,3 +1,4 @@
+import type { VercelRequest, VercelResponse } from "@vercel/node";
 import express from "express";
 import { registerRoutes } from "../server/routes";
 
@@ -8,7 +9,6 @@ let initError: string | null = null;
 function createApp(): Promise<void> {
   app = express();
 
-  // CORS
   app.use((req, res, next) => {
     const origin = req.headers.origin || "*";
     res.setHeader("Access-Control-Allow-Origin", origin as string);
@@ -35,7 +35,7 @@ function createApp(): Promise<void> {
   });
 }
 
-async function handler(req: any, res: any) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     if (!initPromise) {
       initPromise = createApp().catch((err) => {
@@ -58,12 +58,6 @@ async function handler(req: any, res: any) {
     return res.status(500).json({
       error: "Handler error",
       message: err.message,
-      stack: err.stack,
     });
   }
 }
-
-// Explicit module.exports for CJS compatibility
-module.exports = handler;
-module.exports.default = handler;
-export default handler;
