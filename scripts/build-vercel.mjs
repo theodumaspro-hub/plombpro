@@ -34,22 +34,17 @@ for (const fn of functions) {
   const fnDir = join(OUT, "functions", `${fn.name}.func`);
   mkdirSync(fnDir, { recursive: true });
 
-  console.log(`Bundling ${fn.src} -> ${fnDir}/index.js`);
+  console.log(`Bundling ${fn.src} -> ${fnDir}/index.cjs`);
   execSync(
-    `npx esbuild ${fn.src} --bundle --platform=node --target=node18 --format=cjs --outfile=${fnDir}/index.js --log-level=info`,
+    `npx esbuild ${fn.src} --bundle --platform=node --target=node18 --format=cjs --outfile=${fnDir}/index.cjs --log-level=info`,
     { stdio: "inherit", cwd: ROOT }
   );
 
   writeFileSync(join(fnDir, ".vc-config.json"), JSON.stringify({
     runtime: "nodejs18.x",
-    handler: "index",
+    handler: "index.cjs",
     launcherType: "Nodejs",
     maxDuration: 30,
-  }));
-
-  // Override type:module from root package.json — force CJS
-  writeFileSync(join(fnDir, "package.json"), JSON.stringify({
-    type: "commonjs"
   }));
   console.log(`  ✓ ${fn.name} bundled`);
 }
