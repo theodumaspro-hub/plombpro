@@ -1,6 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import express, { type Request, Response, NextFunction } from "express";
-import { createServer } from "http";
 import { registerRoutes } from "../server/routes";
 
 // ─── Build Express app for Vercel Serverless ───────
@@ -22,12 +21,19 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: false }));
 
-// ─── Register all routes (same function as the main server) ───
-const httpServer = createServer(app);
+// ─── Register all routes ───────────────────────────
 let routesRegistered = false;
-const routesReady = registerRoutes(httpServer, app).then(() => {
-  routesRegistered = true;
-});
+let routesError: Error | null = null;
+
+const routesReady = registerRoutes(app)
+  .then(() => {
+    routesRegistered = true;
+    console.log("[api/index] Routes registered successfully");
+  })
+  .catch((err) => {
+    routesError = err;
+    console.error("[api/index] Failed to register routes:", err);
+  });
 
 // Error handler
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
@@ -39,9 +45,24 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
 
 // ─── Vercel serverless handler ─────────────────────────────
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Ensure routes are registered before handling
-  if (!routesRegistered) {
-    await routesReady;
+  try {
+    // Ensure routes are registered before handling
+    if (!routesRegistered && !routesError) {
+      await routesReady;
+    }
+    if (routesError) {
+      console.error("[api/index] Routes failed:", routesError.message);
+      return res.status(500).json({ 
+        error: "Server initialization failed",
+        detail: routesError.message 
+      });
+    }
+    return app(req as any, res as any);
+  } catch (err: any) {
+    console.error("[api/index] Handler error:", err);
+    return res.status(500).json({ 
+      error: "Internal server error", 
+      detail: err.message 
+    });
   }
-  return app(req as any, res as any);
 }

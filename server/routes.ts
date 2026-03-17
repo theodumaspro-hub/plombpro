@@ -1,5 +1,4 @@
 import type { Express, Request, Response, NextFunction } from "express";
-import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { supabaseAdmin, supabaseConfig } from "./supabaseClient";
 import { registerIntegrationRoutes } from "./integrationRoutes";
@@ -32,9 +31,8 @@ async function authMiddleware(req: Request, res: Response, next: NextFunction) {
 }
 
 export async function registerRoutes(
-  httpServer: Server,
   app: Express
-): Promise<Server> {
+): Promise<void> {
 
   // ─── Public Config ──────────────────────────────────────
   app.get("/api/config", (_req, res) => {
@@ -1407,5 +1405,4 @@ export async function registerRoutes(
     res.json(template);
   });
 
-  return httpServer;
 }

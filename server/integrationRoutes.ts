@@ -1,6 +1,15 @@
 import type { Express } from "express";
 import { storage } from "./storage";
-import { google } from "googleapis";
+
+// Dynamic import to avoid bundling the massive googleapis package at cold-start
+let _google: typeof import("googleapis")["google"] | null = null;
+async function getGoogle() {
+  if (!_google) {
+    const mod = await import("googleapis");
+    _google = mod.google;
+  }
+  return _google;
+}
 
 // ─── PlombPro Google OAuth Config ─────────────────────────────
 // These are the SaaS-level credentials (set once by PlombPro admin)
@@ -66,6 +75,7 @@ export function registerIntegrationRoutes(app: Express) {
     }
 
     const redirectUri = getRedirectUri(req);
+    const google = await getGoogle();
     const oauth2Client = new google.auth.OAuth2(
       GOOGLE_CLIENT_ID,
       GOOGLE_CLIENT_SECRET,
@@ -99,6 +109,7 @@ export function registerIntegrationRoutes(app: Express) {
     const redirectUri = getRedirectUri(req);
 
     try {
+      const google = await getGoogle();
       const oauth2Client = new google.auth.OAuth2(
         GOOGLE_CLIENT_ID,
         GOOGLE_CLIENT_SECRET,
@@ -163,6 +174,7 @@ export function registerIntegrationRoutes(app: Express) {
       const clientId = meta.clientId || GOOGLE_CLIENT_ID;
       const clientSecret = meta.clientSecret || GOOGLE_CLIENT_SECRET;
       
+      const google = await getGoogle();
       const oauth2Client = new google.auth.OAuth2(clientId, clientSecret);
       oauth2Client.setCredentials({
         access_token: (integration as any).accessToken,
@@ -303,6 +315,7 @@ export function registerIntegrationRoutes(app: Express) {
         const clientId = meta.clientId || GOOGLE_CLIENT_ID;
         const clientSecret = meta.clientSecret || GOOGLE_CLIENT_SECRET;
         
+        const google = await getGoogle();
         const oauth2Client = new google.auth.OAuth2(clientId, clientSecret);
         oauth2Client.setCredentials({
           access_token: (integration as any).accessToken,
