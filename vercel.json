@@ -1,16 +1,5 @@
 {
   "version": 2,
   "installCommand": "npm install --include=dev",
-  "buildCommand": "node scripts/build-vercel.mjs",
-  "outputDirectory": "public",
-  "functions": {
-    "api/**/*.js": {
-      "maxDuration": 30
-    }
-  },
-  "rewrites": [
-    { "source": "/api/health", "destination": "/api/health.js" },
-    { "source": "/api/:path*", "destination": "/api/index.js" },
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
-  ]
+  "buildCommand": "node scripts/build-vercel.mjs"
 }
