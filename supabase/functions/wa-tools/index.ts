@@ -1,6 +1,8 @@
 // PlombPro WhatsApp Tools — Supabase Edge Function
 // Called by ElevenLabs Agent tools via webhook
 // Single endpoint, routes by "action" field in body
+// IMPORTANT: All responses use a single "message" field with pre-formatted text
+// so the ElevenLabs LLM can simply relay the content without interpretation.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -67,7 +69,8 @@ function eur(n: number | string | null): string {
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ACTION HANDLERS
+// ACTION HANDLERS — All return { message: string }
+// The message is pre-formatted text that the agent should relay directly.
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 // 1. Dashboard summary
@@ -86,16 +89,11 @@ async function handleDashboard(supabase: ReturnType<typeof createClient>, userId
   const unpaid = allInvoices.filter((i: any) => i.status !== "payée" && i.status !== "avoir");
   const totalUnpaid = unpaid.reduce((sum: number, i: any) => sum + ((parseFloat(i.amount_ttc) || 0) - (parseFloat(i.amount_paid) || 0)), 0);
   const activeChantiers = (chantiers.data ?? []).filter((c: any) => c.status === "en_cours");
+  const devisEnCours = allQuotes.filter((q: any) => q.status === "envoyé").length;
+  const nbClients = (contacts.data ?? []).length;
 
   return {
-    message: `📊 Résumé de ${artisanName}`,
-    ca_total: eur(caHT),
-    devis_en_cours: allQuotes.filter((q: any) => q.status === "envoyé").length,
-    devis_signes: signed.length,
-    factures_impayees: unpaid.length,
-    montant_impaye: eur(totalUnpaid),
-    clients: (contacts.data ?? []).length,
-    chantiers_actifs: activeChantiers.length,
+    message: `Voici le résumé d'activité de ${artisanName}. Chiffre d'affaires total : ${eur(caHT)}. Devis en cours : ${devisEnCours}. Devis signés : ${signed.length}. Factures impayées : ${unpaid.length} pour un montant de ${eur(totalUnpaid)}. Nombre de clients : ${nbClients}. Chantiers actifs : ${activeChantiers.length}.`,
   };
 }
 
@@ -109,7 +107,7 @@ async function handleImpayes(supabase: ReturnType<typeof createClient>, userId: 
     .order("created_at", { ascending: false });
 
   if (!invoices || invoices.length === 0) {
-    return { message: "✅ Aucune facture impayée ! Tout est à jour." };
+    return { message: "Aucune facture impayée. Tout est à jour." };
   }
 
   // Get contact names
@@ -120,25 +118,23 @@ async function handleImpayes(supabase: ReturnType<typeof createClient>, userId: 
 
   const contactMap = new Map((contacts ?? []).map((c: any) => [c.id, c.first_name ? `${c.first_name} ${c.last_name || ""}`.trim() : c.company || "Inconnu"]));
 
-  const list = invoices.map((inv: any) => ({
-    numero: inv.number,
-    client: contactMap.get(inv.contact_id) || "Inconnu",
-    montant_total: eur(inv.amount_ttc),
-    reste_a_payer: eur((parseFloat(inv.amount_ttc) || 0) - (parseFloat(inv.amount_paid) || 0)),
-    statut: inv.status,
-  }));
+  const totalUnpaid = invoices.reduce((s: number, i: any) => s + (parseFloat(i.amount_ttc) || 0) - (parseFloat(i.amount_paid) || 0), 0);
+
+  const lines = invoices.map((inv: any) => {
+    const client = contactMap.get(inv.contact_id) || "Inconnu";
+    const reste = (parseFloat(inv.amount_ttc) || 0) - (parseFloat(inv.amount_paid) || 0);
+    return `- ${inv.number} (${client}) : reste ${eur(reste)}`;
+  });
 
   return {
-    message: `💳 ${list.length} facture(s) impayée(s)`,
-    total_impaye: eur(invoices.reduce((s: number, i: any) => s + (parseFloat(i.amount_ttc) || 0) - (parseFloat(i.amount_paid) || 0), 0)),
-    factures: list,
+    message: `Il y a ${invoices.length} facture(s) impayée(s) pour un total de ${eur(totalUnpaid)}. Voici le détail : ${lines.join(". ")}`,
   };
 }
 
 // 3. Search contact
 async function handleChercherClient(supabase: ReturnType<typeof createClient>, userId: string, body: any) {
   const query = (body.query || "").trim().toLowerCase();
-  if (!query) return { message: "❌ Précise un nom, téléphone ou email pour la recherche." };
+  if (!query) return { message: "Précise un nom, téléphone ou email pour la recherche." };
 
   const { data: contacts } = await supabase
     .from("contacts")
@@ -150,18 +146,16 @@ async function handleChercherClient(supabase: ReturnType<typeof createClient>, u
     return name.includes(query) || (c.email || "").toLowerCase().includes(query) || (c.phone || "").includes(query);
   });
 
-  if (results.length === 0) return { message: `🔍 Aucun contact trouvé pour "${body.query}".` };
+  if (results.length === 0) return { message: `Aucun contact trouvé pour "${body.query}".` };
+
+  const lines = results.map((c: any) => {
+    const nom = `${c.first_name || ""} ${c.last_name || ""}`.trim() || c.company;
+    const details = [c.email, c.phone, c.city].filter(Boolean).join(", ");
+    return `- ${nom} (${c.type})${details ? " : " + details : ""}`;
+  });
 
   return {
-    message: `👥 ${results.length} contact(s) trouvé(s)`,
-    contacts: results.map((c: any) => ({
-      id: c.id,
-      nom: `${c.first_name || ""} ${c.last_name || ""}`.trim() || c.company,
-      type: c.type,
-      email: c.email,
-      telephone: c.phone,
-      ville: c.city,
-    })),
+    message: `${results.length} contact(s) trouvé(s) pour "${body.query}" : ${lines.join(". ")}`,
   };
 }
 
@@ -169,7 +163,7 @@ async function handleChercherClient(supabase: ReturnType<typeof createClient>, u
 async function handleAjouterClient(supabase: ReturnType<typeof createClient>, userId: string, body: any) {
   const { firstName, lastName, company, contactPhone, email, address, city } = body;
   if (!firstName && !lastName && !company) {
-    return { message: "❌ Il faut au moins un nom ou une raison sociale." };
+    return { message: "Il faut au moins un prénom, un nom ou une raison sociale pour créer le client." };
   }
 
   const { data, error } = await supabase.from("contacts").insert({
@@ -185,18 +179,18 @@ async function handleAjouterClient(supabase: ReturnType<typeof createClient>, us
     city: city || null,
   }).select().single();
 
-  if (error) return { message: `❌ Erreur: ${error.message}` };
+  if (error) return { message: `Erreur lors de la création du client : ${error.message}` };
 
+  const nomComplet = `${firstName || ""} ${lastName || ""} ${company ? "(" + company + ")" : ""}`.trim();
   return {
-    message: `✅ Client ajouté : ${firstName || ""} ${lastName || ""} ${company || ""}`.trim(),
-    client_id: data.id,
+    message: `Le client ${nomComplet} a été créé avec succès (ID ${data.id}). Vous pouvez maintenant créer des devis ou des rendez-vous pour ce client.`,
   };
 }
 
 // 5. Create quote
 async function handleCreerDevis(supabase: ReturnType<typeof createClient>, userId: string, body: any) {
   const { contactName, title, description, lines } = body;
-  if (!title) return { message: "❌ Il faut un titre pour le devis." };
+  if (!title) return { message: "Il faut un titre pour le devis. Par exemple : Rénovation salle de bain, Remplacement chauffe-eau." };
 
   // Find contact by name
   let contactId: number | null = null;
@@ -241,7 +235,7 @@ async function handleCreerDevis(supabase: ReturnType<typeof createClient>, userI
     conditions: "Devis valable 30 jours",
   }).select().single();
 
-  if (error) return { message: `❌ Erreur: ${error.message}` };
+  if (error) return { message: `Erreur lors de la création du devis : ${error.message}` };
 
   // Insert lines
   if (devisLines.length > 0) {
@@ -260,14 +254,7 @@ async function handleCreerDevis(supabase: ReturnType<typeof createClient>, userI
   }
 
   return {
-    message: `📝 Devis créé : ${number}`,
-    numero: number,
-    titre: title,
-    client: contactName || "Non attribué",
-    montant_ht: eur(totalHT),
-    montant_ttc: eur(totalHT + totalTVA),
-    statut: "brouillon",
-    conseil: devisLines.length === 0 ? "Tu peux ajouter des lignes depuis l'app PlombPro." : undefined,
+    message: `Le devis ${number} a été créé avec succès. Titre : ${title}. Client : ${contactName || "Non attribué"}. Montant HT : ${eur(totalHT)}. Montant TTC : ${eur(totalHT + totalTVA)}. Statut : brouillon.${devisLines.length === 0 ? " Vous pouvez ajouter des lignes depuis l'app PlombPro." : ""}`,
   };
 }
 
@@ -285,17 +272,15 @@ async function handleVoirDevis(supabase: ReturnType<typeof createClient>, userId
 
   const { data: quotes } = await query;
   if (!quotes || quotes.length === 0) {
-    return { message: body.status ? `📋 Aucun devis "${body.status}".` : "📋 Aucun devis trouvé." };
+    return { message: body.status ? `Aucun devis avec le statut "${body.status}".` : "Aucun devis trouvé." };
   }
 
+  const lines = quotes.map((q: any) =>
+    `- ${q.number} : ${q.title} (${eur(q.amount_ttc)}, statut: ${q.status})`
+  );
+
   return {
-    message: `📋 ${quotes.length} devis`,
-    devis: quotes.map((q: any) => ({
-      numero: q.number,
-      titre: q.title,
-      montant_ttc: eur(q.amount_ttc),
-      statut: q.status,
-    })),
+    message: `Voici vos ${quotes.length} dernier(s) devis : ${lines.join(". ")}`,
   };
 }
 
@@ -303,7 +288,7 @@ async function handleVoirDevis(supabase: ReturnType<typeof createClient>, userId
 async function handleEnvoyerDocument(supabase: ReturnType<typeof createClient>, userId: string, body: any) {
   const { documentType, documentNumber, channel } = body;
   if (!documentType || !documentNumber) {
-    return { message: "❌ Précise le type (devis/facture) et le numéro du document." };
+    return { message: "Précise le type (devis ou facture) et le numéro du document." };
   }
 
   const table = documentType === "facture" ? "invoices" : "quotes";
@@ -314,7 +299,7 @@ async function handleEnvoyerDocument(supabase: ReturnType<typeof createClient>, 
     .eq("number", documentNumber)
     .single();
 
-  if (!doc) return { message: `❌ ${documentType} ${documentNumber} introuvable.` };
+  if (!doc) return { message: `${documentType} ${documentNumber} introuvable.` };
 
   // Get contact info
   let contactInfo = "client inconnu";
@@ -324,19 +309,14 @@ async function handleEnvoyerDocument(supabase: ReturnType<typeof createClient>, 
   }
 
   return {
-    message: `📤 ${documentType} ${documentNumber} prêt à envoyer`,
-    document: documentNumber,
-    client: contactInfo,
-    montant: eur(doc.amount_ttc),
-    canal: channel || "email",
-    info: "L'envoi par email/WhatsApp sera disponible prochainement. Tu peux envoyer manuellement depuis l'app PlombPro.",
+    message: `Le ${documentType} ${documentNumber} est prêt à envoyer à ${contactInfo} pour un montant de ${eur(doc.amount_ttc)}. Canal : ${channel || "email"}. L'envoi automatique par email ou WhatsApp sera disponible prochainement. Pour l'instant, vous pouvez l'envoyer depuis l'app PlombPro.`,
   };
 }
 
 // 8. Record payment
 async function handleEnregistrerPaiement(supabase: ReturnType<typeof createClient>, userId: string, body: any) {
   const { invoiceNumber, amount, method } = body;
-  if (!invoiceNumber) return { message: "❌ Précise le numéro de la facture." };
+  if (!invoiceNumber) return { message: "Précise le numéro de la facture." };
 
   const { data: invoice } = await supabase
     .from("invoices")
@@ -345,7 +325,7 @@ async function handleEnregistrerPaiement(supabase: ReturnType<typeof createClien
     .eq("number", invoiceNumber)
     .single();
 
-  if (!invoice) return { message: `❌ Facture ${invoiceNumber} introuvable.` };
+  if (!invoice) return { message: `Facture ${invoiceNumber} introuvable.` };
 
   const remaining = (parseFloat(invoice.amount_ttc) || 0) - (parseFloat(invoice.amount_paid) || 0);
   const paymentAmount = amount ? parseFloat(amount) : remaining;
@@ -358,14 +338,11 @@ async function handleEnregistrerPaiement(supabase: ReturnType<typeof createClien
     .update({ amount_paid: newPaid.toFixed(2), status: newStatus, payment_method: method || "virement" })
     .eq("id", invoice.id);
 
-  if (error) return { message: `❌ Erreur: ${error.message}` };
+  if (error) return { message: `Erreur lors de l'enregistrement du paiement : ${error.message}` };
 
+  const resteAPayer = (parseFloat(invoice.amount_ttc) || 0) - newPaid;
   return {
-    message: `💰 Paiement enregistré : ${eur(paymentAmount)} sur ${invoiceNumber}`,
-    montant_paye: eur(paymentAmount),
-    moyen: method || "virement",
-    reste_a_payer: eur((parseFloat(invoice.amount_ttc) || 0) - newPaid),
-    statut: newStatus,
+    message: `Paiement de ${eur(paymentAmount)} enregistré sur la facture ${invoiceNumber} par ${method || "virement"}. Reste à payer : ${eur(resteAPayer)}. Statut : ${newStatus}.`,
   };
 }
 
@@ -383,25 +360,23 @@ async function handleChantiers(supabase: ReturnType<typeof createClient>, userId
 
   const { data: chantiers } = await query;
   if (!chantiers || chantiers.length === 0) {
-    return { message: "🏗️ Aucun chantier trouvé." };
+    return { message: "Aucun chantier trouvé." };
   }
 
+  const lines = chantiers.map((c: any) => {
+    const lieu = `${c.address || ""} ${c.city || ""}`.trim();
+    return `- ${c.name} (${c.status})${lieu ? " à " + lieu : ""}${c.start_date ? ", début " + c.start_date : ""}`;
+  });
+
   return {
-    message: `🏗️ ${chantiers.length} chantier(s)`,
-    chantiers: chantiers.map((c: any) => ({
-      nom: c.name,
-      statut: c.status,
-      adresse: `${c.address || ""} ${c.city || ""}`.trim(),
-      debut: c.start_date,
-      fin: c.end_date,
-    })),
+    message: `Voici vos ${chantiers.length} chantier(s) : ${lines.join(". ")}`,
   };
 }
 
 // 10. Create appointment
 async function handleCreerRdv(supabase: ReturnType<typeof createClient>, userId: string, body: any) {
   const { title, date, time, contactName, address } = body;
-  if (!title || !date) return { message: "❌ Précise au moins un titre et une date." };
+  if (!title || !date) return { message: "Il faut au moins un titre et une date pour créer le rendez-vous." };
 
   // Find contact
   let contactId: number | null = null;
@@ -429,14 +404,10 @@ async function handleCreerRdv(supabase: ReturnType<typeof createClient>, userId:
     status: "planifié",
   }).select().single();
 
-  if (error) return { message: `❌ Erreur: ${error.message}` };
+  if (error) return { message: `Erreur lors de la création du rendez-vous : ${error.message}` };
 
   return {
-    message: `📅 RDV créé : ${title}`,
-    date,
-    heure: `${startTime} - ${endTime}`,
-    client: contactName || "Non attribué",
-    adresse: address || "Non précisée",
+    message: `Le rendez-vous "${title}" a été créé avec succès pour le ${date} de ${startTime} à ${endTime}. Client : ${contactName || "Non attribué"}. Adresse : ${address || "Non précisée"}.`,
   };
 }
 
@@ -462,20 +433,11 @@ Deno.serve(async (req) => {
     const action = body.action;
     const phone = body.phone;
 
-    // DEBUG: Log the full incoming request body for troubleshooting
     const supabase = getSupabase();
-    try {
-      await supabase.from("whatsapp_conversations").insert({
-        event_type: "debug_raw_request",
-        phone: phone || "MISSING",
-        direction: "inbound",
-        content: JSON.stringify(body),
-      });
-    } catch (_) { /* ignore */ }
 
     if (!action) {
-      return new Response(JSON.stringify({ error: "Missing 'action' field" }), {
-        status: 400,
+      return new Response(JSON.stringify({ message: "Champ action manquant." }), {
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -483,11 +445,9 @@ Deno.serve(async (req) => {
     // Resolve user from phone number
     if (!phone) {
       return new Response(JSON.stringify({
-        error: "Missing 'phone' field",
-        debug: "Received body keys: " + Object.keys(body).join(", "),
-        message: "❌ Numéro de téléphone manquant. Vérifiez la configuration des tools dans ElevenLabs — le champ phone doit contenir le numéro de l'appelant.",
+        message: "Numéro de téléphone manquant. Vérifiez la configuration des tools dans ElevenLabs.",
       }), {
-        status: 200, // 200 so ElevenLabs agent can read the message
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -495,25 +455,14 @@ Deno.serve(async (req) => {
     const user = await resolveUser(supabase, phone);
     if (!user) {
       return new Response(JSON.stringify({
-        message: "❌ Ce numéro WhatsApp n'est pas associé à un compte PlombPro. Connecte ton numéro dans Paramètres > Intégrations > WhatsApp.",
+        message: "Ce numéro WhatsApp n'est pas associé à un compte PlombPro. Connecte ton numéro dans Paramètres, Intégrations, WhatsApp.",
       }), {
-        status: 200, // 200 so ElevenLabs can read the message
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const { user_id, artisan_name } = user;
-
-    // Log the conversation (non-blocking, ignore errors)
-    try {
-      await supabase.from("whatsapp_conversations").insert({
-        event_type: "tool_call",
-        phone,
-        user_id,
-        direction: "inbound",
-        content: JSON.stringify({ action, ...body }),
-      });
-    } catch (_) { /* ignore logging errors */ }
 
     // Route to handler — accept both ElevenLabs tool names (underscores) and original action names (hyphens)
     let result: any;
@@ -562,20 +511,16 @@ Deno.serve(async (req) => {
         result = await handleCreerRdv(supabase, user_id, body);
         break;
       default:
-        result = { message: `❌ Action inconnue: ${action}` };
+        result = { message: `Action inconnue: ${action}` };
     }
-
-    // Always include artisan info and success status in the response
-    result.artisan = artisan_name;
-    result.success = !result.message?.startsWith("❌");
 
     return new Response(JSON.stringify(result), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err: any) {
-    return new Response(JSON.stringify({ error: err.message || "Internal error" }), {
-      status: 500,
+    return new Response(JSON.stringify({ message: `Erreur interne: ${err.message || "erreur inconnue"}` }), {
+      status: 200, // Always 200 so ElevenLabs can read the message
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
