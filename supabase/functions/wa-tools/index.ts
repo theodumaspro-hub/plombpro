@@ -462,6 +462,17 @@ Deno.serve(async (req) => {
     const action = body.action;
     const phone = body.phone;
 
+    // DEBUG: Log the full incoming request body for troubleshooting
+    const supabase = getSupabase();
+    try {
+      await supabase.from("whatsapp_conversations").insert({
+        event_type: "debug_raw_request",
+        phone: phone || "MISSING",
+        direction: "inbound",
+        content: JSON.stringify(body),
+      });
+    } catch (_) { /* ignore */ }
+
     if (!action) {
       return new Response(JSON.stringify({ error: "Missing 'action' field" }), {
         status: 400,
@@ -469,12 +480,14 @@ Deno.serve(async (req) => {
       });
     }
 
-    const supabase = getSupabase();
-
     // Resolve user from phone number
     if (!phone) {
-      return new Response(JSON.stringify({ error: "Missing 'phone' field" }), {
-        status: 400,
+      return new Response(JSON.stringify({
+        error: "Missing 'phone' field",
+        debug: "Received body keys: " + Object.keys(body).join(", "),
+        message: "❌ Numéro de téléphone manquant. Vérifiez la configuration des tools dans ElevenLabs — le champ phone doit contenir le numéro de l'appelant.",
+      }), {
+        status: 200, // 200 so ElevenLabs agent can read the message
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -502,42 +515,59 @@ Deno.serve(async (req) => {
       });
     } catch (_) { /* ignore logging errors */ }
 
-    // Route to handler
+    // Route to handler — accept both ElevenLabs tool names (underscores) and original action names (hyphens)
     let result: any;
     switch (action) {
       case "dashboard":
+      case "voir_resume":
+      case "voir-resume":
         result = await handleDashboard(supabase, user_id, artisan_name);
         break;
       case "impayes":
+      case "voir_impayes":
+      case "voir-impayes":
         result = await handleImpayes(supabase, user_id);
         break;
       case "chercher-client":
+      case "chercher_client":
         result = await handleChercherClient(supabase, user_id, body);
         break;
       case "ajouter-client":
+      case "ajouter_client":
         result = await handleAjouterClient(supabase, user_id, body);
         break;
       case "creer-devis":
+      case "creer_devis":
         result = await handleCreerDevis(supabase, user_id, body);
         break;
       case "voir-devis":
+      case "voir_devis":
         result = await handleVoirDevis(supabase, user_id, body);
         break;
       case "envoyer-document":
+      case "envoyer_document":
         result = await handleEnvoyerDocument(supabase, user_id, body);
         break;
       case "enregistrer-paiement":
+      case "enregistrer_paiement":
         result = await handleEnregistrerPaiement(supabase, user_id, body);
         break;
       case "chantiers":
+      case "voir_chantiers":
+      case "voir-chantiers":
         result = await handleChantiers(supabase, user_id, body);
         break;
       case "creer-rdv":
+      case "creer_rdv":
         result = await handleCreerRdv(supabase, user_id, body);
         break;
       default:
         result = { message: `❌ Action inconnue: ${action}` };
     }
+
+    // Always include artisan info and success status in the response
+    result.artisan = artisan_name;
+    result.success = !result.message?.startsWith("❌");
 
     return new Response(JSON.stringify(result), {
       status: 200,
