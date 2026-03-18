@@ -50,6 +50,9 @@ function AppRouter() {
         setIsAuthed(true);
       }
       setAuthChecked(true);
+    }).catch((err) => {
+      console.error('[APP] getSession failed:', err);
+      setAuthChecked(true);
     });
   }, []);
 
@@ -67,11 +70,23 @@ function AppRouter() {
   }, []);
 
   // Check company/onboarding state (only when authed)
-  const { data: company, isLoading: companyLoading } = useQuery<CompanySettings | null>({
+  const { data: company, isLoading: companyLoading, isError: companyError } = useQuery<CompanySettings | null>({
     queryKey: ["company"],
     queryFn: () => db.getCompanySettings(),
     enabled: isAuthed,
+    retry: 1,
   });
+
+  // If company query fails (expired token, network), force logout to landing
+  useEffect(() => {
+    if (companyError && isAuthed) {
+      console.error('[APP] Company query failed — forcing logout');
+      authStore.logout().then(() => {
+        setIsAuthed(false);
+        setView("landing");
+      });
+    }
+  }, [companyError, isAuthed]);
 
   // Determine view based on auth + company state
   useEffect(() => {
@@ -120,8 +135,14 @@ function AppRouter() {
     setView("landing");
   }, []);
 
-  // Loading state — wait for auth check + company data
-  if (!authChecked || (isAuthed && companyLoading)) {
+  // Loading state — wait for auth check + company data (max 5s safety timeout)
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setLoadingTimeout(true), 5000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (!authChecked || (isAuthed && companyLoading && !companyError && !loadingTimeout)) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
