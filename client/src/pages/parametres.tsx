@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { db } from "@/lib/supabaseData";
+import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -823,19 +824,54 @@ function IntegrationsPanel() {
     },
   });
 
-  // WhatsApp: Connect — stubbed as email/messaging feature
+  // WhatsApp: Connect — links phone number in whatsapp_links + integration_settings
   const connectWhatsappMut = useMutation({
     mutationFn: async () => {
-      toast({ title: "Fonctionnalité email bientôt disponible" });
+      if (!waPhone.trim()) throw new Error("Numéro requis");
+      // Normalize phone to +33 format
+      let phone = waPhone.trim().replace(/[\s\-\.\(\)]/g, "");
+      if (phone.startsWith("0")) phone = "+33" + phone.slice(1);
+      if (!phone.startsWith("+")) phone = "+" + phone;
+
+      // Get current user info
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) throw new Error("Non authentifié");
+      const userId = session.user.id;
+      const userName = session.user.user_metadata?.name || session.user.email || "Artisan";
+
+      // Upsert into whatsapp_links (the table the Edge Function reads)
+      const { error: linkError } = await supabase.from("whatsapp_links").upsert({
+        user_id: userId,
+        phone,
+        artisan_name: userName,
+      }, { onConflict: "phone" });
+      if (linkError) throw linkError;
+
+      // Also save in integration_settings for UI state
+      await db.createIntegrationSetting({
+        provider: "whatsapp",
+        status: "connected",
+        config: { phone },
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["integration-settings"] });
+      toast({ title: "WhatsApp lié avec succès", description: "Vous pouvez maintenant utiliser l'assistant IA via WhatsApp." });
+    },
+    onError: (err: any) => {
+      toast({ title: "Erreur", description: err.message || "Impossible de lier WhatsApp", variant: "destructive" });
     },
   });
 
   // WhatsApp: Disconnect
   const disconnectWhatsappMut = useMutation({
     mutationFn: async () => {
+      // Remove from whatsapp_links
+      const phone = whatsappIntegration?.config?.phone;
+      if (phone) {
+        await supabase.from("whatsapp_links").delete().eq("phone", phone);
+      }
+      // Remove from integration_settings
       if (whatsappIntegration) {
         await db.deleteIntegrationSetting(whatsappIntegration.id);
       }
