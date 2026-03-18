@@ -1,9 +1,10 @@
 import { Link, useLocation } from "wouter";
+import { useState, useEffect, useSyncExternalStore } from "react";
 import {
   LayoutDashboard, FileText, FileCheck, Receipt, HardHat,
   Users, BookOpen, ShoppingCart, Landmark, BarChart3,
   UserCog, Settings, Calendar, Plus, Package, Plug, FileUp,
-  Clock, FolderOpen, Sparkles,
+  Clock, FolderOpen, Sparkles, LogOut, Building2, User,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupLabel,
@@ -12,6 +13,8 @@ import {
 } from "@/components/ui/sidebar";
 import { PerplexityAttribution } from "@/components/PerplexityAttribution";
 import { Button } from "@/components/ui/button";
+import { authStore } from "@/lib/authStore";
+import { db } from "@/lib/supabaseData";
 
 const commercialNav = [
   { label: "Tableau de bord", href: "/", icon: LayoutDashboard },
@@ -79,6 +82,68 @@ function NavSection({ label, items }: { label: string; items: typeof commercialN
   );
 }
 
+function UserProfileFooter() {
+  const user = useSyncExternalStore(
+    (cb) => authStore.subscribe(cb),
+    () => authStore.getUser()
+  );
+  const isAuth = useSyncExternalStore(
+    (cb) => authStore.subscribe(cb),
+    () => authStore.isAuthenticated()
+  );
+  const [companyName, setCompanyName] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isAuth) { setCompanyName(null); return; }
+    db.getCompanySettings().then((cs) => {
+      setCompanyName(cs?.name || null);
+    }).catch(() => setCompanyName(null));
+  }, [isAuth]);
+
+  const handleLogout = async () => {
+    await authStore.logout();
+    window.location.hash = "#/login";
+  };
+
+  if (!isAuth || !user) return null;
+
+  const initials = (user.name || user.email)
+    .split(/[\s@]+/)
+    .slice(0, 2)
+    .map((s) => s[0]?.toUpperCase() || "")
+    .join("");
+
+  return (
+    <div className="border-t border-sidebar-border pt-3 space-y-2">
+      <div className="flex items-center gap-2.5">
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary text-xs font-semibold">
+          {initials}
+        </div>
+        <div className="flex flex-col min-w-0">
+          {companyName && (
+            <span className="text-xs font-medium text-sidebar-foreground truncate flex items-center gap-1">
+              <Building2 className="size-3 shrink-0 text-sidebar-foreground/50" />
+              {companyName}
+            </span>
+          )}
+          <span className="text-[11px] text-sidebar-foreground/50 truncate">
+            {user.email}
+          </span>
+        </div>
+      </div>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={handleLogout}
+        className="w-full justify-start gap-2 h-8 text-xs text-sidebar-foreground/60 hover:text-destructive"
+      >
+        <LogOut className="size-3.5" />
+        Se déconnecter
+      </Button>
+    </div>
+  );
+}
+
 export function AppSidebar() {
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
@@ -119,6 +184,7 @@ export function AppSidebar() {
         <NavSection label="Système" items={systemNav} />
       </SidebarContent>
       <SidebarFooter className="p-3 group-data-[collapsible=icon]:hidden">
+        <UserProfileFooter />
         <PerplexityAttribution />
       </SidebarFooter>
     </Sidebar>
