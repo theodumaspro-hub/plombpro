@@ -12,30 +12,41 @@ function HeaderUserInfo() {
   const [companyName, setCompanyName] = useState<string | null>(null);
 
   useEffect(() => {
-    // Get session immediately
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setEmail(session.user.email || null);
-        // Fetch company name
-        db.getCompanySettings().then((cs) => {
-          setCompanyName(cs?.name || null);
-        }).catch(() => {});
-      }
-    });
+    let cancelled = false;
 
-    // Listen for auth changes
+    // Try to get session — retry a few times since auth may not be ready yet
+    async function fetchUser() {
+      for (let i = 0; i < 10; i++) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user && !cancelled) {
+          setEmail(session.user.email || null);
+          try {
+            const cs = await db.getCompanySettings();
+            if (!cancelled) setCompanyName(cs?.name || null);
+          } catch {}
+          return;
+        }
+        // Wait 500ms before retry
+        await new Promise(r => setTimeout(r, 500));
+      }
+    }
+    fetchUser();
+
+    // Also listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (cancelled) return;
       if (session?.user) {
         setEmail(session.user.email || null);
         db.getCompanySettings().then((cs) => {
-          setCompanyName(cs?.name || null);
+          if (!cancelled) setCompanyName(cs?.name || null);
         }).catch(() => {});
       } else {
         setEmail(null);
         setCompanyName(null);
       }
     });
-    return () => subscription.unsubscribe();
+
+    return () => { cancelled = true; subscription.unsubscribe(); };
   }, []);
 
   const handleLogout = async () => {
@@ -44,12 +55,10 @@ function HeaderUserInfo() {
     window.location.reload();
   };
 
-  if (!email) return null;
-
+  // Always show at least the logout button when in the app view
   const initials = email
-    .split("@")[0]
-    .slice(0, 2)
-    .toUpperCase();
+    ? email.split("@")[0].slice(0, 2).toUpperCase()
+    : "?";
 
   return (
     <div className="flex items-center gap-3">
@@ -61,7 +70,7 @@ function HeaderUserInfo() {
           </span>
         )}
         {companyName && <span className="text-border">|</span>}
-        <span>{email}</span>
+        {email && <span>{email}</span>}
       </div>
       <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary text-[11px] font-semibold sm:hidden">
         {initials}
