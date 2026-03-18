@@ -10,39 +10,31 @@ import { db } from "@/lib/supabaseData";
 function HeaderUserInfo() {
   const [email, setEmail] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
 
-    // Try to get session — retry a few times since auth may not be ready yet
-    async function fetchUser() {
-      for (let i = 0; i < 10; i++) {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user && !cancelled) {
-          setEmail(session.user.email || null);
-          try {
-            const cs = await db.getCompanySettings();
-            if (!cancelled) setCompanyName(cs?.name || null);
-          } catch {}
-          return;
-        }
-        // Wait 500ms before retry
-        await new Promise(r => setTimeout(r, 500));
-      }
-    }
-    fetchUser();
-
-    // Also listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    function loadUser(userEmail: string | undefined) {
       if (cancelled) return;
+      setEmail(userEmail || null);
+      setReady(true);
+      db.getCompanySettings().then((cs) => {
+        if (!cancelled) setCompanyName(cs?.name || null);
+      }).catch(() => {});
+    }
+
+    // 1. Check existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) loadUser(session.user.email);
+    });
+
+    // 2. Listen for future changes (login fires SIGNED_IN event)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
-        setEmail(session.user.email || null);
-        db.getCompanySettings().then((cs) => {
-          if (!cancelled) setCompanyName(cs?.name || null);
-        }).catch(() => {});
+        loadUser(session.user.email);
       } else {
-        setEmail(null);
-        setCompanyName(null);
+        if (!cancelled) { setEmail(null); setCompanyName(null); setReady(false); }
       }
     });
 
@@ -55,26 +47,22 @@ function HeaderUserInfo() {
     window.location.reload();
   };
 
-  // Always show at least the logout button when in the app view
-  const initials = email
-    ? email.split("@")[0].slice(0, 2).toUpperCase()
-    : "?";
-
+  // This component is only rendered inside AppLayout (= authenticated app)
+  // So always show logout, even before session resolves
   return (
     <div className="flex items-center gap-3">
-      <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground">
-        {companyName && (
-          <span className="flex items-center gap-1 font-medium text-foreground">
-            <Building2 className="size-3.5" />
-            {companyName}
-          </span>
-        )}
-        {companyName && <span className="text-border">|</span>}
-        {email && <span>{email}</span>}
-      </div>
-      <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary text-[11px] font-semibold sm:hidden">
-        {initials}
-      </div>
+      {ready && (
+        <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground">
+          {companyName && (
+            <span className="flex items-center gap-1 font-medium text-foreground">
+              <Building2 className="size-3.5" />
+              {companyName}
+            </span>
+          )}
+          {companyName && <span className="text-border">|</span>}
+          {email && <span>{email}</span>}
+        </div>
+      )}
       <Button
         variant="ghost"
         size="sm"
