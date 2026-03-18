@@ -851,7 +851,7 @@ function IntegrationsPanel() {
       await db.createIntegrationSetting({
         provider: "whatsapp",
         status: "connected",
-        config: { phone },
+        whatsapp_phone: phone,
       });
     },
     onSuccess: () => {
@@ -867,7 +867,7 @@ function IntegrationsPanel() {
   const disconnectWhatsappMut = useMutation({
     mutationFn: async () => {
       // Remove from whatsapp_links
-      const phone = whatsappIntegration?.config?.phone;
+      const phone = whatsappIntegration?.whatsapp_phone;
       if (phone) {
         await supabase.from("whatsapp_links").delete().eq("phone", phone);
       }
@@ -1003,7 +1003,7 @@ function IntegrationsPanel() {
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="size-4 text-emerald-400" />
                   <div>
-                    <div className="text-sm font-medium">{whatsappIntegration?.config?.phone || whatsappIntegration?.whatsapp_phone}</div>
+                    <div className="text-sm font-medium">{whatsappIntegration?.whatsapp_phone}</div>
                     <div className="text-xs text-muted-foreground">WhatsApp lié — Assistant IA actif</div>
                   </div>
                 </div>
