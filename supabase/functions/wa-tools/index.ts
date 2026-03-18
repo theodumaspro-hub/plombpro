@@ -24,9 +24,22 @@ async function resolveUser(
   supabase: ReturnType<typeof createClient>,
   phone: string
 ): Promise<{ user_id: string; artisan_name: string } | null> {
-  // Normalize phone (remove spaces, +, etc.)
-  const normalized = phone.replace(/[\s\-\+\(\)]/g, "");
-  const variants = [normalized, `+${normalized}`, `+33${normalized.slice(1)}`];
+  // Strip everything that isn't a digit
+  const digits = phone.replace(/\D/g, "");
+  // Build all plausible variants
+  const variants = new Set<string>();
+  variants.add(digits);                         // 33648330316
+  variants.add(`+${digits}`);                   // +33648330316
+  if (digits.startsWith("33")) {
+    variants.add(`0${digits.slice(2)}`);         // 0648330316
+    variants.add(`+${digits}`);                  // +33648330316
+  }
+  if (digits.startsWith("0")) {
+    variants.add(`+33${digits.slice(1)}`);       // +33648330316
+    variants.add(`33${digits.slice(1)}`);        // 33648330316
+  }
+  // Also try the raw input as-is
+  variants.add(phone.trim());
 
   for (const p of variants) {
     const { data } = await supabase

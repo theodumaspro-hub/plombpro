@@ -1,43 +1,55 @@
-import { useState, useEffect, useSyncExternalStore } from "react";
+import { useState, useEffect } from "react";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { Button } from "@/components/ui/button";
 import { LogOut, Building2 } from "lucide-react";
 import { ThemeToggle } from "./ThemeToggle";
-import { authStore } from "@/lib/authStore";
+import { supabase } from "@/lib/supabase";
 import { db } from "@/lib/supabaseData";
 
 function HeaderUserInfo() {
-  const user = useSyncExternalStore(
-    (cb) => authStore.subscribe(cb),
-    () => authStore.getUser()
-  );
-  const isAuth = useSyncExternalStore(
-    (cb) => authStore.subscribe(cb),
-    () => authStore.isAuthenticated()
-  );
+  const [email, setEmail] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isAuth) { setCompanyName(null); return; }
-    db.getCompanySettings().then((cs) => {
-      setCompanyName(cs?.name || null);
-    }).catch(() => setCompanyName(null));
-  }, [isAuth]);
+    // Get session immediately
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setEmail(session.user.email || null);
+        // Fetch company name
+        db.getCompanySettings().then((cs) => {
+          setCompanyName(cs?.name || null);
+        }).catch(() => {});
+      }
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setEmail(session.user.email || null);
+        db.getCompanySettings().then((cs) => {
+          setCompanyName(cs?.name || null);
+        }).catch(() => {});
+      } else {
+        setEmail(null);
+        setCompanyName(null);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   const handleLogout = async () => {
-    await authStore.logout();
+    await supabase.auth.signOut();
     window.location.hash = "#/";
     window.location.reload();
   };
 
-  if (!isAuth || !user) return null;
+  if (!email) return null;
 
-  const initials = (user.name || user.email)
-    .split(/[\s@]+/)
+  const initials = email
+    .split("@")[0]
     .slice(0, 2)
-    .map((s) => s[0]?.toUpperCase() || "")
-    .join("");
+    .toUpperCase();
 
   return (
     <div className="flex items-center gap-3">
@@ -49,7 +61,7 @@ function HeaderUserInfo() {
           </span>
         )}
         {companyName && <span className="text-border">|</span>}
-        <span>{user.email}</span>
+        <span>{email}</span>
       </div>
       <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary text-[11px] font-semibold sm:hidden">
         {initials}
